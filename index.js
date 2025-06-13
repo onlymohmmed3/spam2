@@ -3,7 +3,7 @@ process.on('uncaughException', console.error);
 
 const schedule = require('node-schedule');
 
-const restartJob = schedule.scheduleJob('*/30 * * * *', function() {
+const restartJob = schedule.scheduleJob('*/5 * * * *', function() {
     console.log('Restarting the project...');
     // إضافة الكود الخاص بإعادة تشغيل البرنامج هنا
 });
