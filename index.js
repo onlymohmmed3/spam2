@@ -1,74 +1,81 @@
-process.on('unhandledRejection', console.error);
-process.on('uncaughtException', console.error);
-
-const schedule = require('node-schedule');
-const Discord = require("discord.js-selfbot-v13");
+const { Client } = require("discord.js-selfbot-v13");
 const { userAccount } = require("sphinx-run");
 
-// إعادة التشغيل التلقائي كل 5 دقائق
-schedule.scheduleJob('*/5 * * * *', function () {
-  console.log('Restarting the project...');
-  // يمكن إضافة منطق إعادة تشغيل فعلي لو مطلوب
-});
+// بيانات التوكنات
+const TOKEN1 = process.env.TOKEN1;
+const TOKEN2 = process.env.TOKEN2;
 
-// توكنات الحسابات (من .env)
-const tokens = [
-  process.env.TOKEN1,
-  process.env.TOKEN2
-];
+// إنشاء كلاينت لكل حساب
+const client1 = new Client();
+const client2 = new Client();
 
-// دالة لتشغيل الحساب الواحد (عربي + إنجليزي)
-function startBot(token) {
-  const client = new Discord.Client({
-    checkUpdate: false,
-  });
+// عند تسجيل الدخول الأول
+client1.on("ready", async () => {
+  console.log(`${client1.user.username} ✅ (Client 1) جاهز`);
 
-  client.on("ready", () => {
-    console.log(`${client.user.username} is ready!`);
-  });
+  const leveling1 = new userAccount(client1, require("discord.js-selfbot-v13"));
 
-  const account = new userAccount(client, Discord);
-
-  // اللغة العربية
-  account.leveling({
+  leveling1.leveling({
     channel: "1246427655855804477",
+    time: 10000,
     randomLetters: false,
-    time: 10000, // كل 10 ثواني
     type: "ar",
   });
 
-  // اللغة الإنجليزية
-  account.leveling({
+  leveling1.leveling({
     channel: "1246427655855804477",
+    time: 15000,
     randomLetters: false,
-    time: 10000,
     type: "eng",
   });
-
-  client.login(token);
-}
-
-// تشغيل الحسابات
-tokens.forEach((token) => {
-  if (token && token !== "") {
-    startBot(token);
-  } else {
-    console.error("❌ توكن مفقود أو فارغ، تأكد من .env");
-  }
 });
 
-// سيرفر Express لتثبيت التشغيل
+// عند تسجيل الدخول الثاني
+client2.on("ready", async () => {
+  console.log(`${client2.user.username} ✅ (Client 2) جاهز`);
+
+  const leveling2 = new userAccount(client2, require("discord.js-selfbot-v13"));
+
+  leveling2.leveling({
+    channel: "1246427655855804477",
+    time: 12000,
+    randomLetters: false,
+    type: "ar",
+  });
+
+  leveling2.leveling({
+    channel: "1246427655855804477",
+    time: 17000,
+    randomLetters: false,
+    type: "eng",
+  });
+});
+
+// تسجيل الدخول
+client1.login(TOKEN1);
+client2.login(TOKEN2);
+
+// Express (عشان ما يتوقف في الاستضافة)
 const express = require("express");
 const app = express();
-const listener = app.listen(process.env.PORT || 2000, () => {
-  console.log("Your app is listening on port " + listener.address().port);
-});
 app.get("/", (req, res) => {
   res.send(`
-    <body style="font-family: sans-serif;">
-      <center>
-        <h1>🤖 All Bots Running Successfully</h1>
-        <p>Both accounts: Arabic + English Active</p>
-      </center>
-    </body>`);
+    <html>
+      <head>
+        <title>🎥 Bot Status + Music</title>
+      </head>
+      <body style="background-color: #111; color: white; font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
+        <h1>🎶 Music & Bot Running 24/7</h1>
+        <p>Enjoy the vibes while the bot levels up 🚀</p>
+        
+        <iframe width="800" height="450"
+                src="https://www.youtube.com/embed/9DOSpJ7Vvso?autoplay=1&controls=1"
+                frameborder="0"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowfullscreen>
+        </iframe>
+      </body>
+    </html>
+  `);
 });
+
