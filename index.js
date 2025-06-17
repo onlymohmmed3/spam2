@@ -3,7 +3,6 @@ const { execSync } = require("child_process");
 const fs = require("fs");
 
 const dependencies = [
-  "discord.js@14.14.1",
   "discord.js-selfbot-v13",
   "dotenv",
   "express",
@@ -26,11 +25,13 @@ ensureDependencies();
 // ✅ تحميل المتغيرات من .env
 require("dotenv").config();
 
-const { Client, WebhookClient } = require("discord.js");
+const { Client, WebhookClient } = require("discord.js-selfbot-v13");
 const { userAccount } = require("sphinx-run");
 const express = require("express");
 
-const { TOKEN1, TOKEN2, CONTROL_CHANNEL_ID, WEBHOOK_URL } = process.env;
+const CONTROL_CHANNEL_ID = "1384368299181342771";
+const WEBHOOK_URL = "https://discord.com/api/webhooks/1384368635480637520/i28dxTzynJb913AxunQEjHzhaDBGJNXwlipWtlazruBegRbBDj-kp3HXyAtbcP4cXgTM";
+const { TOKEN1, TOKEN2 } = process.env;
 
 const clients = [null, null];
 const levelings = [null, null];
@@ -53,14 +54,14 @@ function sendWebhook(content) {
 }
 
 // ⏱️ توليد وقت عشوائي طبيعي للسبام
-function getRandomTime(base = 10000, variation = 2000) {
+function getRandomTime(base = 4000, variation = 1500) {
   return base + Math.floor(Math.random() * variation) - variation / 2;
 }
 
 async function startClient(index) {
   if (clients[index]) return;
 
-  const client = new Client();
+  const client = new Client({ checkUpdate: false });
   clients[index] = client;
 
   client.on("ready", () => {
@@ -71,14 +72,14 @@ async function startClient(index) {
 
     leveling.leveling({
       channel: CONTROL_CHANNEL_ID,
-      time: getRandomTime(index === 0 ? 10000 : 13000, 2000),
+      time: getRandomTime(),
       randomLetters: false,
       type: "ar",
     });
 
     leveling.leveling({
       channel: CONTROL_CHANNEL_ID,
-      time: getRandomTime(index === 0 ? 10000 : 13000, 2000),
+      time: getRandomTime(),
       randomLetters: false,
       type: "eng",
     });
@@ -92,20 +93,11 @@ async function startClient(index) {
 
     switch (command.toLowerCase()) {
       case "!help":
-        sendWebhook(`🛠️ **الأوامر المتاحة:**
-\`!help\` - عرض قائمة الأوامر
-\`!status\` - حالة الحسابات
-\`!stop 1\` - إيقاف الحساب 1
-\`!start 2\` - تشغيل الحساب 2
-\`!restart 1\` - إعادة تشغيل الحساب 1
-\`!uptime\` - مدة التشغيل
-\`!ping\` - اختبار الاستجابة`);
+        sendWebhook(`🛠️ **الأوامر المتاحة:**\n\`!help\` - عرض قائمة الأوامر\n\`!status\` - حالة الحسابات\n\`!stop 1\` - إيقاف الحساب 1\n\`!start 2\` - تشغيل الحساب 2\n\`!restart 1\` - إعادة تشغيل الحساب 1\n\`!uptime\` - مدة التشغيل\n\`!ping\` - اختبار الاستجابة`);
         break;
 
       case "!status":
-        sendWebhook(`📊 **الحالة:**
-- Client 1: ${states[0] ? "✅ شغال" : "❌ موقف"}
-- Client 2: ${states[1] ? "✅ شغال" : "❌ موقف"}`);
+        sendWebhook(`📊 **الحالة:**\n- Client 1: ${states[0] ? "✅ شغال" : "❌ موقف"}\n- Client 2: ${states[1] ? "✅ شغال" : "❌ موقف"}`);
         break;
 
       case "!stop":
