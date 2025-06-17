@@ -54,7 +54,7 @@ function sendWebhook(content) {
 }
 
 // ⏱️ توليد وقت عشوائي طبيعي للسبام
-function getRandomTime(base = 10000, variation = 0) {
+function getRandomTime(base = 4000, variation = 1500) {
   return base + Math.floor(Math.random() * variation) - variation / 2;
 }
 
@@ -72,14 +72,14 @@ async function startClient(index) {
 
     leveling.leveling({
       channel: CONTROL_CHANNEL_ID,
-      time: getRandomTime(10000),
+      time: getRandomTime(),
       randomLetters: false,
       type: "ar",
     });
 
     leveling.leveling({
       channel: CONTROL_CHANNEL_ID,
-      time: getRandomTime(10000),
+      time: getRandomTime(),
       randomLetters: false,
       type: "eng",
     });
@@ -87,10 +87,10 @@ async function startClient(index) {
     // 🚀 إرسال إشعار أن الحساب اشتغل
     sendWebhook(`✅ الحساب ${index + 1} **${client.user.username}** اشتغل بنجاح`);
 
-    // إرسال كل 10 ثواني
+    // إرسال كل ساعة
     setInterval(() => {
       sendWebhook(`📢 الحساب ${index + 1} **${client.user.username}** لا يزال يعمل بنجاح`);
-    }, 10000);
+    }, 3600000);
   });
 
   client.on("messageCreate", (msg) => {
