@@ -8,29 +8,28 @@ const { userAccount } = require("sphinx-run");
 // إعادة التشغيل التلقائي كل 5 دقائق
 schedule.scheduleJob('*/5 * * * *', function () {
   console.log('Restarting the project...');
-  // يمكنك هنا وضع كود إعادة التشغيل إذا أردت
+  // يمكن إضافة منطق إعادة تشغيل فعلي لو مطلوب
 });
 
-// تعريف بيانات الحسابات
+// توكنات الحسابات (من .env)
 const tokens = [
   process.env.TOKEN1,
   process.env.TOKEN2
 ];
 
-// دالة تشغيل الحساب وتشغيل العربي والإنجليزي
+// دالة لتشغيل الحساب الواحد (عربي + إنجليزي)
 function startBot(token) {
   const client = new Discord.Client({
     checkUpdate: false,
-    intents: [Discord.Intents.FLAGS.GUILDS],
   });
 
-  client.on("ready", async () => {
+  client.on("ready", () => {
     console.log(`${client.user.username} is ready!`);
   });
 
   const account = new userAccount(client, Discord);
 
-  // تشغيل اللغة العربية
+  // اللغة العربية
   account.leveling({
     channel: "1246427655855804477",
     randomLetters: false,
@@ -38,29 +37,38 @@ function startBot(token) {
     type: "ar",
   });
 
-  // تشغيل اللغة الإنجليزية
+  // اللغة الإنجليزية
   account.leveling({
     channel: "1246427655855804477",
     randomLetters: false,
-    time: 10000, // كل 10 ثواني
+    time: 10000,
     type: "eng",
   });
 
   client.login(token);
 }
 
-// تشغيل كل الحسابات
-tokens.forEach(startBot);
+// تشغيل الحسابات
+tokens.forEach((token) => {
+  if (token && token !== "") {
+    startBot(token);
+  } else {
+    console.error("❌ توكن مفقود أو فارغ، تأكد من .env");
+  }
+});
 
-// سيرفر صغير للحفاظ على التشغيل (مفيد لـ Replit)
+// سيرفر Express لتثبيت التشغيل
 const express = require("express");
 const app = express();
-var listener = app.listen(process.env.PORT || 2000, function () {
+const listener = app.listen(process.env.PORT || 2000, () => {
   console.log("Your app is listening on port " + listener.address().port);
 });
 app.get("/", (req, res) => {
   res.send(`
-  <body>
-  <center><h1>All Bots Running (AR + ENG)</h1></center>
-  </body>`);
+    <body style="font-family: sans-serif;">
+      <center>
+        <h1>🤖 All Bots Running Successfully</h1>
+        <p>Both accounts: Arabic + English Active</p>
+      </center>
+    </body>`);
 });
