@@ -29,8 +29,8 @@ const { Client, WebhookClient } = require("discord.js-selfbot-v13");
 const { userAccount } = require("sphinx-run");
 const express = require("express");
 
-const CONTROL_CHANNEL_ID = "1384368299181342771";
-const WEBHOOK_URL = "https://discord.com/api/webhooks/1384368635480637520/i28dxTzynJb913AxunQEjHzhaDBGJNXwlipWtlazruBegRbBDj-kp3HXyAtbcP4cXgTM";
+const CONTROL_CHANNEL_ID = process.env.CONTROL_CHANNEL_ID;
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const { TOKEN1, TOKEN2 } = process.env;
 
 const clients = [null, null];
@@ -54,7 +54,7 @@ function sendWebhook(content) {
 }
 
 // ⏱️ توليد وقت عشوائي طبيعي للسبام
-function getRandomTime(base = 4000, variation = 1500) {
+function getRandomTime(base = 10000, variation = 0) {
   return base + Math.floor(Math.random() * variation) - variation / 2;
 }
 
@@ -72,20 +72,29 @@ async function startClient(index) {
 
     leveling.leveling({
       channel: CONTROL_CHANNEL_ID,
-      time: getRandomTime(),
+      time: getRandomTime(10000),
       randomLetters: false,
       type: "ar",
     });
 
     leveling.leveling({
       channel: CONTROL_CHANNEL_ID,
-      time: getRandomTime(),
+      time: getRandomTime(10000),
       randomLetters: false,
       type: "eng",
     });
+
+    // 🚀 إرسال إشعار أن الحساب اشتغل
+    sendWebhook(`✅ الحساب ${index + 1} **${client.user.username}** اشتغل بنجاح`);
+
+    // إرسال كل 10 ثواني
+    setInterval(() => {
+      sendWebhook(`📢 الحساب ${index + 1} **${client.user.username}** لا يزال يعمل بنجاح`);
+    }, 10000);
   });
 
   client.on("messageCreate", (msg) => {
+    if (index !== 0) return;
     if (msg.channel.id !== CONTROL_CHANNEL_ID || !msg.content.startsWith("!")) return;
 
     const [command, arg] = msg.content.trim().split(" ");
