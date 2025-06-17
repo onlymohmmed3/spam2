@@ -1,90 +1,151 @@
+// 📦 تثبيت تلقائي للبكجات المطلوبة عند التشغيل
+const { execSync } = require("child_process");
+const fs = require("fs");
+
+const dependencies = [
+  "discord.js@14.14.1",
+  "discord.js-selfbot-v13",
+  "dotenv",
+  "express",
+  "sphinx-run"
+];
+
+function ensureDependencies() {
+  for (const pkg of dependencies) {
+    const name = pkg.split("@")[0];
+    try {
+      require.resolve(name);
+    } catch (e) {
+      console.log(`📦 Installing missing package: ${pkg}`);
+      execSync(`npm install ${pkg}`, { stdio: "inherit" });
+    }
+  }
+}
+ensureDependencies();
+
+// ✅ تحميل المتغيرات من .env
 require("dotenv").config();
-const { Client } = require("discord.js-selfbot-v13");
+
+const { Client, WebhookClient } = require("discord.js");
 const { userAccount } = require("sphinx-run");
 const express = require("express");
 
-const CONTROL_CHANNEL_ID = process.env.CONTROL_CHANNEL_ID;
+const { TOKEN1, TOKEN2, CONTROL_CHANNEL_ID, WEBHOOK_URL } = process.env;
 
-const tokens = [process.env.TOKEN1, process.env.TOKEN2];
 const clients = [null, null];
-const states = [false, false]; // حالة التشغيل لكل حساب
 const levelings = [null, null];
+const tokens = [TOKEN1, TOKEN2];
+const states = [false, false];
+const webhook = new WebhookClient({ url: WEBHOOK_URL });
+const startTime = Date.now();
 
-function setupLeveling(clientIndex) {
-  const client = clients[clientIndex];
-  if (!client) return;
-
-  const leveling = new userAccount(client, require("discord.js-selfbot-v13"));
-  levelings[clientIndex] = leveling;
-
-  leveling.leveling({
-    channel: "1246427655855804477",
-    time: 10000 + clientIndex * 2000,
-    randomLetters: false,
-    type: "ar",
+// 📤 إرسال رسالة للويب هوك مع الوقت
+function sendWebhook(content) {
+  const now = new Date().toLocaleString("ar-EG", {
+    timeZone: "Asia/Riyadh",
+    hour12: false,
   });
+  webhook.send({
+    content: `🕓 **${now}**\n${content}`,
+    username: "📡 Bot Logger",
+    avatarURL: "https://i.imgur.com/AfFp7pu.png",
+  }).catch(console.error);
+}
 
-  leveling.leveling({
-    channel: "1246427655855804477",
-    time: 15000 + clientIndex * 2000,
-    randomLetters: false,
-    type: "eng",
-  });
-
-  console.log(`✅ Leveling started for client ${clientIndex + 1}`);
+// ⏱️ توليد وقت عشوائي طبيعي للسبام
+function getRandomTime(base = 10000, variation = 2000) {
+  return base + Math.floor(Math.random() * variation) - variation / 2;
 }
 
 async function startClient(index) {
   if (clients[index]) return;
+
   const client = new Client();
   clients[index] = client;
 
   client.on("ready", () => {
-    console.log(`🟢 Client ${index + 1} (${client.user.username}) ready`);
-    setupLeveling(index);
+    console.log(`✅ Client ${index + 1} (${client.user.username}) is ready`);
     states[index] = true;
+    const leveling = new userAccount(client, require("discord.js-selfbot-v13"));
+    levelings[index] = leveling;
+
+    leveling.leveling({
+      channel: CONTROL_CHANNEL_ID,
+      time: getRandomTime(index === 0 ? 10000 : 13000, 2000),
+      randomLetters: false,
+      type: "ar",
+    });
+
+    leveling.leveling({
+      channel: CONTROL_CHANNEL_ID,
+      time: getRandomTime(index === 0 ? 10000 : 13000, 2000),
+      randomLetters: false,
+      type: "eng",
+    });
   });
 
   client.on("messageCreate", (msg) => {
-    if (msg.channel.id !== CONTROL_CHANNEL_ID) return;
-    if (!msg.content.startsWith("!")) return;
+    if (msg.channel.id !== CONTROL_CHANNEL_ID || !msg.content.startsWith("!")) return;
 
     const [command, arg] = msg.content.trim().split(" ");
+    if (!command) return;
 
-    switch (command) {
+    switch (command.toLowerCase()) {
+      case "!help":
+        sendWebhook(`🛠️ **الأوامر المتاحة:**
+\`!help\` - عرض قائمة الأوامر
+\`!status\` - حالة الحسابات
+\`!stop 1\` - إيقاف الحساب 1
+\`!start 2\` - تشغيل الحساب 2
+\`!restart 1\` - إعادة تشغيل الحساب 1
+\`!uptime\` - مدة التشغيل
+\`!ping\` - اختبار الاستجابة`);
+        break;
+
       case "!status":
-        msg.reply(
-          `📊 الحالة:\n` +
-          `- Client 1: ${states[0] ? "✅ شغال" : "❌ موقف"}\n` +
-          `- Client 2: ${states[1] ? "✅ شغال" : "❌ موقف"}`
-        );
+        sendWebhook(`📊 **الحالة:**
+- Client 1: ${states[0] ? "✅ شغال" : "❌ موقف"}
+- Client 2: ${states[1] ? "✅ شغال" : "❌ موقف"}`);
         break;
 
       case "!stop":
         stopClient(parseInt(arg) - 1);
-        msg.reply(`⛔ تم إيقاف الحساب ${arg}`);
+        sendWebhook(`⛔ تم إيقاف الحساب ${arg}`);
         break;
 
       case "!start":
         startClient(parseInt(arg) - 1);
-        msg.reply(`▶️ تم تشغيل الحساب ${arg}`);
+        sendWebhook(`▶️ تم تشغيل الحساب ${arg}`);
         break;
 
       case "!restart":
         const idx = parseInt(arg) - 1;
         stopClient(idx, () => startClient(idx));
-        msg.reply(`🔄 جاري إعادة تشغيل الحساب ${arg}`);
+        sendWebhook(`🔄 تم إعادة تشغيل الحساب ${arg}`);
+        break;
+
+      case "!uptime":
+        const sec = Math.floor((Date.now() - startTime) / 1000);
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        sendWebhook(`⏱️ مدة التشغيل: ${h} ساعة و ${m} دقيقة و ${s} ثانية`);
+        break;
+
+      case "!ping":
+        const ping = Date.now() - msg.createdTimestamp;
+        sendWebhook(`🏓 Ping: ${ping}ms`);
         break;
 
       default:
-        msg.reply("❓ أمر غير معروف");
+        sendWebhook(`❓ أمر غير معروف. استخدم \`!help\``);
     }
   });
 
   try {
     await client.login(tokens[index]);
   } catch (err) {
-    console.error(`❌ فشل تسجيل دخول Client ${index + 1}`, err.message);
+    console.error(`❌ فشل تسجيل الدخول Client ${index + 1}:`, err.message);
     clients[index] = null;
     states[index] = false;
   }
@@ -95,19 +156,16 @@ function stopClient(index, callback) {
     clients[index].destroy();
     clients[index] = null;
     states[index] = false;
-    levelings[index] = null;
-    console.log(`🛑 تم إيقاف الحساب ${index + 1}`);
+    console.log(`🛑 تم إيقاف Client ${index + 1}`);
   }
   if (callback) callback();
 }
 
-// بدء تشغيل جميع الحسابات تلقائياً
+// بدء التشغيل
 startClient(0);
 startClient(1);
 
-// Express لإبقاء المشروع نشطاً على الاستضافة
+// سيرفر Express للحفاظ على النشاط
 const app = express();
-app.get("/", (req, res) => res.send("<h1>🤖 Bot is Running</h1>"));
-app.listen(process.env.PORT || 3000, () => {
-  console.log("🔁 Express server running");
-});
+app.get("/", (req, res) => res.send("<h1>🤖 Bot Running</h1>"));
+app.listen(3000, () => console.log("🚀 Web server on port 3000"));
