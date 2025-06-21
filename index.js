@@ -89,7 +89,7 @@ class AIConversationEngine {
       "Wow, that's amazing! 👏",
       "Hahaha that's so funny! 😂",
       "Really? What happened next?",
-      "No way! That's unbelievable �",
+      "No way! That's unbelievable 😱",
       "That makes me think of something else...",
       "I never thought of it that way!",
       "Tell me more about that."
