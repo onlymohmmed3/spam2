@@ -1849,38 +1849,4 @@ class WebServer {
 }
 
 // 🚀 Main Execution Block
-// This asynchronous IIFE (Immediately Invoked Function Expression) orchestrates the application startup.
-(async () => {
-  // 1. Ensure all necessary NPM packages are installed
-  await DependencyManager.ensureDependencies();
-
-  // 2. Load application configuration from .env file
-  const { config, accounts } = ConfigManager.loadConfig();
-
-  Logger.info("Starting Discord Bot Manager application...");
-
-  // Initialize a dummy WebSocket server first to pass to Logger and BotManager
-  // It will be replaced by the actual one once WebServer starts listening
-  const dummyWsServer = {
-    clients: new Set(), // A simple set to simulate clients for initial broadcasting
-    // Add a send method that does nothing or logs a warning
-    send: (message) => { /* console.warn("Attempted to send WebSocket message before server is ready."); */ }
-  };
-  
-  // 3. Initialize and start the core Bot Manager
-  const botManager = new BotManager(config, accounts, dummyWsServer); // Pass dummy WS server initially
-
-  // 4. Initialize and start the Web Server for monitoring
-  const webServer = new WebServer(botManager, config.WEB_SERVER_PORT);
-  
-  // Now that the actual WebSocket server is created, link it to the Logger
-  Logger.setWsServer(webServer.wsServer); 
-
-  // Start the web server (which also starts listening for WebSocket connections)
-  webServer.start();
-
-  // 5. Start the Discord bots after the web server is ready
-  await botManager.start();
-
-  Logger.info("Application setup complete. Bots are connecting and system is running.");
-})();
+// This asynchronous IIFE (Immediately Invoke
