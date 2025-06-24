@@ -1,10 +1,10 @@
 // 🚀 Discord SuperBot Pro - Professional Edition
 // Complete rewrite with modern architecture and sleek design
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-const { execSync } = require('child_process');
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { execSync } from 'child_process';
 
 // 📦 Smart Dependency Manager
 class DependencyManager {
@@ -22,7 +22,7 @@ class DependencyManager {
       'lowdb@6.0.1',
       'dotenv@16.3.1'
     ];
-    
+
     console.log('🔧 Installing dependencies...');
     for (const pkg of packages) {
       try {
@@ -39,18 +39,20 @@ class DependencyManager {
 // Initialize dependencies
 DependencyManager.install();
 
-const { Client } = require('discord.js-selfbot-v13');
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const cors = require('cors');
-const helmet = require('helmet');
-const WebSocket = require('ws');
-const cron = require('node-cron');
-const chalk = require('chalk');
-const { Low } = require('lowdb');
-const { JSONFile } = require('lowdb/node');
-require('dotenv').config();
+
+import { Client } from 'discord.js-selfbot-v13';
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import cors from 'cors';
+import helmet from 'helmet';
+import WebSocket from 'ws';
+import cron from 'node-cron';
+import chalk from 'chalk';
+import { Low } from 'lowdb';
+import { JSONFile } from 'lowdb/node';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // 🛡️ Security & Config Manager
 class ConfigManager {
@@ -166,12 +168,12 @@ class DatabaseManager {
       message,
       data
     });
-    
+
     // Keep only last 1000 logs
     if (this.db.data.logs.length > 1000) {
       this.db.data.logs = this.db.data.logs.slice(-1000);
     }
-    
+
     await this.db.write();
   }
 }
@@ -260,7 +262,7 @@ class AIMessageGenerator {
         ]
       }
     };
-    
+
     this.lastMessages = [];
     this.conversationContext = [];
   }
@@ -268,26 +270,26 @@ class AIMessageGenerator {
   generateMessage(type = 'casual', language = 'ar') {
     const templates = this.templates[language]?.[type] || this.templates.ar[type];
     let message;
-    
+
     do {
       message = templates[Math.floor(Math.random() * templates.length)];
     } while (this.lastMessages.includes(message) && templates.length > 1);
-    
+
     this.lastMessages.push(message);
     if (this.lastMessages.length > 10) {
       this.lastMessages.shift();
     }
-    
+
     return message;
   }
 
   generateContextualResponse(lastMessage) {
     const language = /[\u0600-\u06FF]/.test(lastMessage) ? 'ar' : 'en';
-    
+
     if (lastMessage.includes('?') || lastMessage.includes('؟')) {
       return this.generateMessage('reactions', language);
     }
-    
+
     return this.generateMessage('casual', language);
   }
 }
@@ -364,7 +366,7 @@ class BotAccountManager {
     const interval = setInterval(async () => {
       await this.sendAutoMessage(index);
     }, this.config.get('bot.messageInterval'));
-    
+
     this.messageIntervals.set(index, interval);
   }
 
@@ -379,16 +381,16 @@ class BotAccountManager {
   async sendAutoMessage(index) {
     const client = this.clients.get(index);
     const channelId = this.config.get('channels.conversation');
-    
+
     if (!client || !channelId) return;
 
     try {
       const channel = await client.channels.fetch(channelId);
       const message = this.aiGenerator.generateMessage('casual', this.config.get('bot.language'));
-      
+
       await channel.send(message);
       await this.db.updateStats('totalMessages');
-      
+
       Logger.info(`Account ${index + 1} sent auto message`);
     } catch (error) {
       Logger.error(`Failed to send auto message for account ${index + 1}: ${error.message}`);
@@ -398,11 +400,11 @@ class BotAccountManager {
   async handleAccountError(index, error) {
     await this.db.updateStats('errors');
     const attempts = this.reconnectAttempts.get(index) || 0;
-    
+
     if (attempts < 5) {
       this.reconnectAttempts.set(index, attempts + 1);
       const delay = Math.min(5000 * Math.pow(2, attempts), 30000);
-      
+
       setTimeout(() => {
         Logger.info(`Attempting to reconnect account ${index + 1} (attempt ${attempts + 1})`);
         const token = this.config.get('tokens')[index];
@@ -417,7 +419,7 @@ class BotAccountManager {
   getAccountsStatus() {
     const accounts = [];
     const tokens = this.config.get('tokens');
-    
+
     tokens.forEach((token, index) => {
       const client = this.clients.get(index);
       accounts.push({
@@ -427,7 +429,7 @@ class BotAccountManager {
         reconnectAttempts: this.reconnectAttempts.get(index) || 0
       });
     });
-    
+
     return accounts;
   }
 
@@ -474,22 +476,22 @@ class WebDashboardServer {
       try {
         const { password } = req.body;
         const adminPassword = this.config.get('security.adminPassword');
-        
+
         if (!adminPassword) {
           return res.status(400).json({ error: 'Admin password not set' });
         }
-        
+
         const isValid = await bcrypt.compare(password, adminPassword);
         if (!isValid) {
           return res.status(401).json({ error: 'Invalid password' });
         }
-        
+
         const token = jwt.sign(
           { admin: true },
           this.config.get('security.jwtSecret'),
           { expiresIn: '24h' }
         );
-        
+
         res.json({ token });
       } catch (error) {
         res.status(500).json({ error: error.message });
@@ -502,7 +504,7 @@ class WebDashboardServer {
         const stats = this.db.db.data.stats;
         const accounts = this.botManager.getAccountsStatus();
         const uptime = Date.now() - stats.startTime;
-        
+
         res.json({
           stats: {
             ...stats,
@@ -546,20 +548,20 @@ class WebDashboardServer {
 
   setupWebSocket() {
     this.wss = new WebSocket.Server({ noServer: true });
-    
+
     this.wss.on('connection', (ws) => {
       Logger.info('WebSocket client connected');
-      
+
       // Send initial data
       this.sendDashboardUpdate(ws);
-      
+
       // Send updates every 5 seconds
       const interval = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           this.sendDashboardUpdate(ws);
         }
       }, 5000);
-      
+
       ws.on('close', () => {
         clearInterval(interval);
         Logger.info('WebSocket client disconnected');
@@ -571,7 +573,7 @@ class WebDashboardServer {
     try {
       const stats = this.db.db.data.stats;
       const accounts = this.botManager.getAccountsStatus();
-      
+
       ws.send(JSON.stringify({
         type: 'dashboard_update',
         data: {
@@ -590,11 +592,11 @@ class WebDashboardServer {
 
   authenticate(req, res, next) {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
-    
+
     try {
       jwt.verify(token, this.config.get('security.jwtSecret'));
       next();
@@ -1021,7 +1023,7 @@ class WebDashboardServer {
             const hours = Math.floor(seconds / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
             const remainingSeconds = seconds % 60;
-            
+
             if (hours > 0) {
                 return \`\${hours}h \${minutes}m \${remainingSeconds}s\`;
             } else if (minutes > 0) {
@@ -1076,7 +1078,7 @@ class DiscordSuperBotPro {
     this.db = new DatabaseManager();
     this.botManager = new BotAccountManager(this.config, this.db);
     this.webServer = new WebDashboardServer(this.config, this.db, this.botManager);
-    
+
     global.db = this.db;
     this.setupEventHandlers();
     this.setupScheduledTasks();
@@ -1128,10 +1130,10 @@ class DiscordSuperBotPro {
   async performHealthCheck() {
     const accounts = this.botManager.getAccountsStatus();
     const offlineAccounts = accounts.filter(a => a.status === 'offline' || a.status === 'error');
-    
+
     if (offlineAccounts.length > 0) {
       Logger.warn(`Health check: ${offlineAccounts.length} accounts are offline`);
-      
+
       // Attempt to restart failed accounts
       for (const account of offlineAccounts) {
         if (account.reconnectAttempts < 3) {
@@ -1146,7 +1148,7 @@ class DiscordSuperBotPro {
   async initialize() {
     try {
       Logger.info('🚀 Initializing Discord SuperBot Pro...');
-      
+
       // Validate configuration
       if (!this.validateConfig()) {
         Logger.error('❌ Configuration validation failed');
@@ -1193,7 +1195,7 @@ class DiscordSuperBotPro {
 
   shutdown() {
     Logger.info('Shutting down Discord SuperBot Pro...');
-    
+
     // Stop all bot accounts
     this.config.get('tokens').forEach((_, index) => {
       this.botManager.stopAccount(index);
@@ -1223,7 +1225,7 @@ async function main() {
   ██║  ██║██║╚════██║██║     ██║   ██║██╔══██╗██║  ██║    ██╔═══╝ ██╔══██╗██║   ██║
   ██████╔╝██║███████║╚██████╗╚██████╔╝██║  ██║██████╔╝    ██║     ██║  ██║╚██████╔╝
   ╚═════╝ ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═════╝     ╚═╝     ╚═╝  ╚═╝ ╚═════╝ 
-  
+
   🚀 Discord SuperBot Pro - Professional Edition
   💎 Advanced Multi-Account Management System
   ⚡ Built with Modern Architecture & Security
@@ -1231,7 +1233,7 @@ async function main() {
 
   const app = new DiscordSuperBotPro();
   const success = await app.initialize();
-  
+
   if (!success) {
     Logger.error('❌ Failed to start application');
     process.exit(1);
