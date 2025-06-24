@@ -1,6 +1,3 @@
-// Load environment variables from .env file
-require('dotenv').config();
-
 // 🚀 Discord SuperBot Pro - Professional Edition
 // Complete rewrite with modern architecture and sleek design
 
@@ -11,696 +8,603 @@ const { execSync } = require('child_process');
 
 // 📦 Smart Dependency Manager
 class DependencyManager {
-    static async install() {
-        const packages = [
-            'discord.js-selfbot-v13@3.0.1',
-            'express@4.18.2',
-            'bcryptjs@2.4.3',
-            'jsonwebtoken@9.0.0',
-            'cors@2.8.5',
-            'helmet@6.1.5',
-            'ws@8.13.0',
-            'node-cron@3.0.2',
-            'chalk@4.1.2',
-            'lowdb@6.0.1',
-            'dotenv@16.0.3' // Add dotenv to dependencies
-        ];
-
-        console.log('🔧 Installing dependencies...');
-        for (const pkg of packages) {
-            try {
-                // Check if the package is already installed
-                require.resolve(pkg.split('@')[0]);
-                console.log(`✅ ${pkg.split('@')[0]} is already installed.`);
-            } catch (e) {
-                // If not installed, install it
-                console.log(`📦 Installing: ${pkg}`);
-                execSync(`npm install ${pkg}`, { stdio: 'inherit' });
-            }
-        }
-        console.log('✅ All dependencies installed!');
+  static async install() {
+    const packages = [
+      'discord.js-selfbot-v13@3.0.1',
+      'express@4.18.2',
+      'bcryptjs@2.4.3',
+      'jsonwebtoken@9.0.0',
+      'cors@2.8.5',
+      'helmet@6.1.5',
+      'ws@8.13.0',
+      'node-cron@3.0.2',
+      'chalk@4.1.2',
+      'lowdb@6.0.1',
+      'dotenv@16.3.1'
+    ];
+    
+    console.log('🔧 Installing dependencies...');
+    for (const pkg of packages) {
+      try {
+        require.resolve(pkg.split('@')[0]);
+      } catch {
+        console.log(`📦 Installing: ${pkg}`);
+        execSync(`npm install ${pkg}`, { stdio: 'inherit' });
+      }
     }
+    console.log('✅ All dependencies installed!');
+  }
 }
 
-// Immediately invoke dependency installation and then proceed with app setup
-(async () => {
-    await DependencyManager.install();
+// Initialize dependencies
+DependencyManager.install();
 
-    // Now that dependencies are confirmed, require them
-    const { Client } = require('discord.js-selfbot-v13');
-    const express = require('express');
-    const bcrypt = require('bcryptjs');
-    const jwt = require('jsonwebtoken');
-    const cors = require('cors');
-    const helmet = require('helmet');
-    const WebSocket = require('ws');
-    const cron = require('node-cron');
-    const chalk = require('chalk');
-    const { Low } = require('lowdb');
-    const { JSONFile } = require('lowdb/node');
+const { Client } = require('discord.js-selfbot-v13');
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const cors = require('cors');
+const helmet = require('helmet');
+const WebSocket = require('ws');
+const cron = require('node-cron');
+const chalk = require('chalk');
+const { Low } = require('lowdb');
+const { JSONFile } = require('lowdb/node');
+require('dotenv').config();
 
-    // 🛡️ Configuration Loader (from .env)
-    class Config {
-        constructor() {
-            // Discord Bot Configuration
-            this.tokens = process.env.DISCORD_TOKENS ? process.env.DISCORD_TOKENS.split(',') : [];
-            this.channels = {
-                control: process.env.CONTROL_CHANNEL_ID || "",
-                conversation: process.env.CONVERSATION_CHANNEL_ID || ""
-            };
+// 🛡️ Security & Config Manager
+class ConfigManager {
+  constructor() {
+    this.initConfig();
+  }
 
-            // Security Configuration
-            this.security = {
-                adminPassword: process.env.ADMIN_PASSWORD || "",
-                jwtSecret: process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex'),
-                maxLoginAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5
-            };
+  initConfig() {
+    // Load from environment variables
+    this.config = {
+      tokens: process.env.DISCORD_TOKENS ? process.env.DISCORD_TOKENS.split(',') : [],
+      channels: {
+        control: process.env.CONTROL_CHANNEL_ID || "",
+        conversation: process.env.CONVERSATION_CHANNEL_ID || ""
+      },
+      security: {
+        adminPassword: process.env.ADMIN_PASSWORD || "",
+        jwtSecret: process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex'),
+        maxLoginAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5
+      },
+      bot: {
+        messageInterval: parseInt(process.env.MESSAGE_INTERVAL) || 10000,
+        aiEnabled: process.env.AI_ENABLED === 'true',
+        autoReconnect: process.env.AUTO_RECONNECT !== 'false',
+        language: process.env.BOT_LANGUAGE || "ar"
+      },
+      server: {
+        port: parseInt(process.env.SERVER_PORT) || 3000,
+        host: process.env.SERVER_HOST || "localhost"
+      },
+      features: {
+        webDashboard: process.env.WEB_DASHBOARD !== 'false',
+        statistics: process.env.STATISTICS !== 'false',
+        logging: process.env.LOGGING !== 'false',
+        notifications: process.env.NOTIFICATIONS !== 'false'
+      }
+    };
 
-            // Bot Features Configuration
-            this.bot = {
-                messageInterval: parseInt(process.env.MESSAGE_INTERVAL) || 10000,
-                aiEnabled: process.env.AI_ENABLED === 'true',
-                autoReconnect: process.env.AUTO_RECONNECT === 'true',
-                language: process.env.BOT_LANGUAGE || "ar"
-            };
-
-            // Web Dashboard Server Configuration
-            this.server = {
-                port: parseInt(process.env.SERVER_PORT) || 3000,
-                host: process.env.SERVER_HOST || "localhost"
-            };
-
-            // Additional Features
-            this.features = {
-                webDashboard: process.env.WEB_DASHBOARD_ENABLED === 'true',
-                statistics: process.env.STATISTICS_ENABLED === 'true',
-                logging: process.env.LOGGING_ENABLED === 'true',
-                notifications: process.env.NOTIFICATIONS_ENABLED === 'true'
-            };
-
-            this.validateAndHashAdminPassword();
-            this.validateJwtSecret();
-        }
-
-        // Validate and hash admin password if it's not already hashed
-        async validateAndHashAdminPassword() {
-            const adminPassword = this.security.adminPassword;
-            if (adminPassword && !adminPassword.startsWith('$2a$')) { // Check if it looks like a bcrypt hash
-                try {
-                    const hashedPassword = await bcrypt.hash(adminPassword, 10);
-                    this.security.adminPassword = hashedPassword;
-                    Logger.warn('Admin password has been hashed and updated in memory. Please update your .env file with the hashed password for persistence.');
-                    Logger.warn(`New Hashed Password (for .env): ${hashedPassword}`);
-                } catch (error) {
-                    Logger.error('Failed to hash admin password:', error.message);
-                }
-            }
-        }
-
-        // Ensure JWT secret is set
-        validateJwtSecret() {
-            if (!this.security.jwtSecret) {
-                this.security.jwtSecret = crypto.randomBytes(32).toString('hex');
-                Logger.warn(`JWT_SECRET was not set in .env. A new one has been generated in memory. Please update your .env file with: JWT_SECRET="${this.security.jwtSecret}" for persistence.`);
-            }
-        }
-
-        get(key) {
-            // Helper to get nested configuration values
-            return key.split('.').reduce((obj, k) => obj?.[k], this);
-        }
+    // Validate required configuration
+    if (!this.config.tokens || this.config.tokens.length === 0) {
+      console.log(chalk.yellow('⚠️  No Discord tokens found in .env file'));
+      console.log(chalk.cyan('📝 Please add your Discord tokens to .env file:'));
+      console.log(chalk.cyan('DISCORD_TOKENS=token1,token2,token3'));
+      process.exit(0);
     }
 
-    // Initialize global configuration instance
-    const config = new Config();
-
-
-    // 📊 Advanced Database Manager
-    class DatabaseManager {
-        constructor() {
-            // Path to the lowdb data file
-            const dbFilePath = path.join(__dirname, 'data.json');
-            const adapter = new JSONFile(dbFilePath);
-            this.db = new Low(adapter);
-            this.init();
-        }
-
-        async init() {
-            // Read the database file
-            await this.db.read();
-            // Set default data if the file is empty
-            this.db.data ||= {
-                stats: {
-                    totalMessages: 0,
-                    aiMessages: 0,
-                    errors: 0,
-                    reconnects: 0,
-                    startTime: Date.now(),
-                    dailyStats: {} // Daily statistics will be stored here
-                },
-                accounts: {}, // Account specific data (if needed later)
-                logs: [], // Application logs
-                sessions: {} // User sessions for web dashboard
-            };
-            // Write the initial data back to the file
-            await this.db.write();
-        }
-
-        async updateStats(type, increment = 1) {
-            if (!config.get('features.statistics')) return; // Check if statistics are enabled
-
-            const today = new Date().toISOString().split('T')[0]; // Get today's date inYYYY-MM-DD format
-            this.db.data.stats[type] += increment; // Increment the main statistic
-            this.db.data.stats.dailyStats[today] = this.db.data.stats.dailyStats[today] || {};
-            this.db.data.stats.dailyStats[today][type] = (this.db.data.stats.dailyStats[today][type] || 0) + increment;
-            await this.db.write(); // Persist changes to disk
-        }
-
-        async addLog(level, message, data = {}) {
-            if (!config.get('features.logging')) return; // Check if logging is enabled
-
-            this.db.data.logs.push({
-                timestamp: Date.now(),
-                level,
-                message,
-                data
-            });
-
-            // Keep only the last 1000 logs to prevent the file from growing too large
-            if (this.db.data.logs.length > 1000) {
-                this.db.data.logs = this.db.data.logs.slice(-1000);
-            }
-
-            await this.db.write(); // Persist changes to disk
-        }
+    if (!this.config.channels.control || !this.config.channels.conversation) {
+      console.log(chalk.yellow('⚠️  Channel IDs not configured'));
+      console.log(chalk.cyan('📝 Please add channel IDs to .env file:'));
+      console.log(chalk.cyan('CONTROL_CHANNEL_ID=your_control_channel_id'));
+      console.log(chalk.cyan('CONVERSATION_CHANNEL_ID=your_conversation_channel_id'));
+      process.exit(0);
     }
 
-    // 🎨 Advanced Logger
-    class Logger {
-        static info(message, data = {}) {
-            console.log(chalk.cyan(`[INFO] ${new Date().toLocaleString()} - ${message}`));
-            // Add log to database if it's initialized and logging is enabled
-            if (global.db && config.get('features.logging')) global.db.addLog('info', message, data);
-        }
+    if (!this.config.security.adminPassword) {
+      console.log(chalk.yellow('⚠️  Admin password not set'));
+      console.log(chalk.cyan('📝 Please add admin password to .env file:'));
+      console.log(chalk.cyan('ADMIN_PASSWORD=your_secure_password'));
+      process.exit(0);
+    }
+  }
 
-        static warn(message, data = {}) {
-            console.log(chalk.yellow(`[WARN] ${new Date().toLocaleString()} - ${message}`));
-            if (global.db && config.get('features.logging')) global.db.addLog('warn', message, data);
-        }
+  get(key) {
+    return key.split('.').reduce((obj, k) => obj?.[k], this.config);
+  }
 
-        static error(message, data = {}) {
-            console.log(chalk.red(`[ERROR] ${new Date().toLocaleString()} - ${message}`));
-            if (global.db && config.get('features.logging')) global.db.addLog('error', message, data);
-        }
+  set(key, value) {
+    const keys = key.split('.');
+    const lastKey = keys.pop();
+    const target = keys.reduce((obj, k) => obj[k] = obj[k] || {}, this.config);
+    target[lastKey] = value;
+  }
+}
 
-        static success(message, data = {}) {
-            console.log(chalk.green(`[SUCCESS] ${new Date().toLocaleString()} - ${message}`));
-            if (global.db && config.get('features.logging')) global.db.addLog('success', message, data);
-        }
+// 📊 Advanced Database Manager
+class DatabaseManager {
+  constructor() {
+    const adapter = new JSONFile(path.join(__dirname, 'data.json'));
+    this.db = new Low(adapter);
+    this.init();
+  }
+
+  async init() {
+    await this.db.read();
+    this.db.data ||= {
+      stats: {
+        totalMessages: 0,
+        aiMessages: 0,
+        errors: 0,
+        reconnects: 0,
+        startTime: Date.now(),
+        dailyStats: {}
+      },
+      accounts: {},
+      logs: [],
+      sessions: {}
+    };
+    await this.db.write();
+  }
+
+  async updateStats(type, increment = 1) {
+    const today = new Date().toISOString().split('T')[0];
+    this.db.data.stats[type] += increment;
+    this.db.data.stats.dailyStats[today] = this.db.data.stats.dailyStats[today] || {};
+    this.db.data.stats.dailyStats[today][type] = (this.db.data.stats.dailyStats[today][type] || 0) + increment;
+    await this.db.write();
+  }
+
+  async addLog(level, message, data = {}) {
+    this.db.data.logs.push({
+      timestamp: Date.now(),
+      level,
+      message,
+      data
+    });
+    
+    // Keep only last 1000 logs
+    if (this.db.data.logs.length > 1000) {
+      this.db.data.logs = this.db.data.logs.slice(-1000);
+    }
+    
+    await this.db.write();
+  }
+}
+
+// 🎨 Advanced Logger
+class Logger {
+  static info(message, data = {}) {
+    console.log(chalk.cyan(`[INFO] ${new Date().toLocaleString()} - ${message}`));
+    if (global.db) global.db.addLog('info', message, data);
+  }
+
+  static warn(message, data = {}) {
+    console.log(chalk.yellow(`[WARN] ${new Date().toLocaleString()} - ${message}`));
+    if (global.db) global.db.addLog('warn', message, data);
+  }
+
+  static error(message, data = {}) {
+    console.log(chalk.red(`[ERROR] ${new Date().toLocaleString()} - ${message}`));
+    if (global.db) global.db.addLog('error', message, data);
+  }
+
+  static success(message, data = {}) {
+    console.log(chalk.green(`[SUCCESS] ${new Date().toLocaleString()} - ${message}`));
+    if (global.db) global.db.addLog('success', message, data);
+  }
+}
+
+// 🤖 Intelligent Message Generator
+class AIMessageGenerator {
+  constructor() {
+    this.templates = {
+      ar: {
+        casual: [
+          "مرحبا جميعاً! كيف الحال اليوم؟ 😊",
+          "هل جرب أحدكم اللعبة الجديدة؟ 🎮",
+          "الطقس جميل اليوم، أليس كذلك؟ ☀️",
+          "أحتاج نصيحة بخصوص شيء... 🤔",
+          "شاهدت فيلم رائع البارحة! 🎬",
+          "من يريد مناقشة موضوع التقنية؟ 💻",
+          "أحب هذا المجتمع كثيراً! ❤️",
+          "هل تعلمون معلومة جديدة اليوم؟ 📚"
+        ],
+        questions: [
+          "ما رأيكم في الذكاء الاصطناعي؟",
+          "أي لغة برمجة تفضلون؟",
+          "ما هو هدفكم لهذا الأسبوع؟",
+          "من يحب القراءة هنا؟",
+          "أي نوع موسيقى تسمعون؟",
+          "ما أفضل وقت للعمل عندكم؟"
+        ],
+        reactions: [
+          "هذا رائع جداً! 🔥",
+          "أوافقك الرأي تماماً ✅",
+          "لم أفكر في هذا من قبل 🤯",
+          "شكراً لك على المشاركة 🙏",
+          "هذا مفيد كثيراً! 💡",
+          "أحسنت! 👏"
+        ]
+      },
+      en: {
+        casual: [
+          "Hey everyone! How's your day going? 😊",
+          "Anyone tried the new game yet? 🎮",
+          "Beautiful weather today, isn't it? ☀️",
+          "Need some advice on something... 🤔",
+          "Watched an amazing movie yesterday! 🎬",
+          "Anyone want to discuss tech? 💻",
+          "Love this community so much! ❤️",
+          "Learn anything new today? 📚"
+        ],
+        questions: [
+          "What do you think about AI?",
+          "Which programming language do you prefer?",
+          "What's your goal for this week?",
+          "Who loves reading here?",
+          "What type of music do you listen to?",
+          "What's your best time to work?"
+        ],
+        reactions: [
+          "That's absolutely amazing! 🔥",
+          "I totally agree with you ✅",
+          "Never thought about it that way 🤯",
+          "Thanks for sharing! 🙏",
+          "This is so helpful! 💡",
+          "Well done! 👏"
+        ]
+      }
+    };
+    
+    this.lastMessages = [];
+    this.conversationContext = [];
+  }
+
+  generateMessage(type = 'casual', language = 'ar') {
+    const templates = this.templates[language]?.[type] || this.templates.ar[type];
+    let message;
+    
+    do {
+      message = templates[Math.floor(Math.random() * templates.length)];
+    } while (this.lastMessages.includes(message) && templates.length > 1);
+    
+    this.lastMessages.push(message);
+    if (this.lastMessages.length > 10) {
+      this.lastMessages.shift();
+    }
+    
+    return message;
+  }
+
+  generateContextualResponse(lastMessage) {
+    const language = /[\u0600-\u06FF]/.test(lastMessage) ? 'ar' : 'en';
+    
+    if (lastMessage.includes('?') || lastMessage.includes('؟')) {
+      return this.generateMessage('reactions', language);
+    }
+    
+    return this.generateMessage('casual', language);
+  }
+}
+
+// 🔧 Bot Account Manager
+class BotAccountManager {
+  constructor(config, db) {
+    this.config = config;
+    this.db = db;
+    this.clients = new Map();
+    this.status = new Map();
+    this.reconnectAttempts = new Map();
+    this.messageIntervals = new Map();
+    this.aiGenerator = new AIMessageGenerator();
+  }
+
+  async startAccount(token, index) {
+    if (this.clients.has(index)) {
+      Logger.warn(`Account ${index + 1} is already running`);
+      return false;
     }
 
-    // 🤖 Intelligent Message Generator
-    class AIMessageGenerator {
-        constructor() {
-            // Message templates for different languages and types
-            this.templates = {
-                ar: {
-                    casual: [
-                        "مرحبا جميعاً! كيف الحال اليوم؟ �",
-                        "هل جرب أحدكم اللعبة الجديدة؟ 🎮",
-                        "الطقس جميل اليوم، أليس كذلك؟ ☀️",
-                        "أحتاج نصيحة بخصوص شيء... 🤔",
-                        "شاهدت فيلم رائع البارحة! 🎬",
-                        "من يريد مناقشة موضوع التقنية؟ 💻",
-                        "أحب هذا المجتمع كثيراً! ❤️",
-                        "هل تعلمون معلومة جديدة اليوم؟ 📚"
-                    ],
-                    questions: [
-                        "ما رأيكم في الذكاء الاصطناعي؟",
-                        "أي لغة برمجة تفضلون؟",
-                        "ما هو هدفكم لهذا الأسبوع؟",
-                        "من يحب القراءة هنا؟",
-                        "أي نوع موسيقى تسمعون؟",
-                        "ما أفضل وقت للعمل عندكم؟"
-                    ],
-                    reactions: [
-                        "هذا رائع جداً! 🔥",
-                        "أوافقك الرأي تماماً ✅",
-                        "لم أفكر في هذا من قبل 🤯",
-                        "شكراً لك على المشاركة 🙏",
-                        "هذا مفيد كثيراً! 💡",
-                        "أحسنت! 👏"
-                    ]
-                },
-                en: {
-                    casual: [
-                        "Hey everyone! How's your day going? 😊",
-                        "Anyone tried the new game yet? 🎮",
-                        "Beautiful weather today, isn't it? ☀️",
-                        "Need some advice on something... 🤔",
-                        "Watched an amazing movie yesterday! 🎬",
-                        "Anyone want to discuss tech? 💻",
-                        "Love this community so much! ❤️",
-                        "Learn anything new today? 📚"
-                    ],
-                    questions: [
-                        "What do you think about AI?",
-                        "Which programming language do you prefer?",
-                        "What's your goal for this week?",
-                        "Who loves reading here?",
-                        "What type of music do you listen to?",
-                        "What's your best time to work?"
-                    ],
-                    reactions: [
-                        "That's absolutely amazing! 🔥",
-                        "I totally agree with you ✅",
-                        "Never thought about it that way 🤯",
-                        "Thanks for sharing! 🙏",
-                        "This is so helpful! 💡",
-                        "Well done! 👏"
-                    ]
-                }
-            };
+    try {
+      const client = new Client({
+        checkUpdate: false,
+        readyStatus: false,
+        autoreconnect: this.config.get('bot.autoReconnect')
+      });
 
-            this.lastMessages = []; // To avoid sending the same message repeatedly
-            this.conversationContext = []; // For more advanced AI interactions (not fully implemented in this version)
-        }
+      this.clients.set(index, client);
+      this.status.set(index, 'connecting');
+      this.reconnectAttempts.set(index, 0);
 
-        // Generates a message based on type and language
-        generateMessage(type = 'casual', language = 'ar') {
-            const templates = this.templates[language]?.[type] || this.templates.ar[type];
-            let message;
+      client.on('ready', () => {
+        this.status.set(index, 'online');
+        Logger.success(`Account ${index + 1} (${client.user.username}) is ready!`);
+        this.startMessageLoop(index);
+      });
 
-            // Ensure the generated message is not one of the last 10 messages sent
-            do {
-                message = templates[Math.floor(Math.random() * templates.length)];
-            } while (this.lastMessages.includes(message) && templates.length > 1);
+      client.on('error', (error) => {
+        Logger.error(`Account ${index + 1} error: ${error.message}`);
+        this.handleAccountError(index, error);
+      });
 
-            this.lastMessages.push(message);
-            // Keep only the last 10 messages
-            if (this.lastMessages.length > 10) {
-                this.lastMessages.shift();
-            }
+      client.on('disconnect', () => {
+        this.status.set(index, 'offline');
+        this.stopMessageLoop(index);
+        Logger.warn(`Account ${index + 1} disconnected`);
+      });
 
-            return message;
-        }
-
-        // Generates a contextual response based on the last message (basic implementation)
-        generateContextualResponse(lastMessage) {
-            // Determine language based on message content
-            const language = /[\u0600-\u06FF]/.test(lastMessage) ? 'ar' : 'en';
-
-            if (lastMessage.includes('?') || lastMessage.includes('؟')) {
-                return this.generateMessage('reactions', language);
-            }
-
-            return this.generateMessage('casual', language);
-        }
+      await client.login(token);
+      return true;
+    } catch (error) {
+      Logger.error(`Failed to start account ${index + 1}: ${error.message}`);
+      this.status.set(index, 'error');
+      return false;
     }
+  }
 
-    // 🔧 Bot Account Manager
-    class BotAccountManager {
-        constructor(config, db) {
-            this.config = config; // Configuration instance
-            this.db = db; // Database instance
-            this.clients = new Map(); // Stores Discord Client objects
-            this.status = new Map(); // Stores the status of each account (online, offline, connecting, error, failed)
-            this.reconnectAttempts = new Map(); // Tracks reconnection attempts for each account
-            this.messageIntervals = new Map(); // Stores setInterval IDs for message loops
-            this.aiGenerator = new AIMessageGenerator(); // AI message generator instance
-        }
-
-        async startAccount(token, index) {
-            // Prevent starting an already running account
-            if (this.clients.has(index)) {
-                Logger.warn(`Account ${index + 1} is already running`);
-                return false;
-            }
-
-            try {
-                // Initialize Discord client
-                const client = new Client({
-                    checkUpdate: false, // Disable update checks
-                    readyStatus: false, // Do not set custom ready status
-                    autoreconnect: this.config.get('bot.autoReconnect') // Use config for auto-reconnect
-                });
-
-                this.clients.set(index, client);
-                this.status.set(index, 'connecting'); // Set initial status to connecting
-                this.reconnectAttempts.set(index, 0); // Reset reconnect attempts
-
-                // Event listener for client ready
-                client.on('ready', () => {
-                    this.status.set(index, 'online'); // Set status to online
-                    Logger.success(`Account ${index + 1} (${client.user.username}) is ready!`);
-                    this.startMessageLoop(index); // Start sending messages
-                });
-
-                // Event listener for client errors
-                client.on('error', (error) => {
-                    Logger.error(`Account ${index + 1} error: ${error.message}`);
-                    this.handleAccountError(index, error); // Handle the error and attempt reconnection
-                });
-
-                // Event listener for client disconnect
-                client.on('disconnect', () => {
-                    this.status.set(index, 'offline'); // Set status to offline
-                    this.stopMessageLoop(index); // Stop message loop
-                    Logger.warn(`Account ${index + 1} disconnected`);
-                });
-
-                // Log in to Discord
-                await client.login(token);
-                return true;
-            } catch (error) {
-                Logger.error(`Failed to start account ${index + 1}: ${error.message}`);
-                this.status.set(index, 'error'); // Set status to error
-                return false;
-            }
-        }
-
-        async stopAccount(index) {
-            const client = this.clients.get(index);
-            if (client) {
-                this.stopMessageLoop(index); // Stop message loop
-                client.destroy(); // Destroy the Discord client
-                this.clients.delete(index); // Remove client from map
-                this.status.set(index, 'offline'); // Set status to offline
-                Logger.info(`Account ${index + 1} stopped`);
-                return true;
-            }
-            return false;
-        }
-
-        startMessageLoop(index) {
-            // Stop any existing loop to prevent duplicates
-            this.stopMessageLoop(index);
-
-            // Start a new interval for sending messages
-            const interval = setInterval(async () => {
-                await this.sendAutoMessage(index);
-            }, this.config.get('bot.messageInterval'));
-
-            this.messageIntervals.set(index, interval);
-            Logger.info(`Started message loop for account ${index + 1} with interval ${this.config.get('bot.messageInterval')}ms`);
-        }
-
-        stopMessageLoop(index) {
-            const interval = this.messageIntervals.get(index);
-            if (interval) {
-                clearInterval(interval); // Clear the interval
-                this.messageIntervals.delete(index); // Remove interval ID from map
-                Logger.info(`Stopped message loop for account ${index + 1}`);
-            }
-        }
-
-        async sendAutoMessage(index) {
-            const client = this.clients.get(index);
-            const channelId = this.config.get('channels.conversation');
-
-            // Only proceed if client is available and conversation channel is set and AI is enabled
-            if (!client || !channelId || !this.config.get('bot.aiEnabled')) {
-                // Logger.warn(`Skipping auto message for account ${index + 1}. Client: ${!!client}, Channel ID: ${!!channelId}, AI Enabled: ${this.config.get('bot.aiEnabled')}`);
-                return;
-            }
-
-            try {
-                const channel = await client.channels.fetch(channelId);
-                if (!channel) {
-                    Logger.error(`Conversation channel with ID ${channelId} not found for account ${index + 1}.`);
-                    return;
-                }
-                const message = this.aiGenerator.generateMessage('casual', this.config.get('bot.language'));
-
-                await channel.send(message);
-                await this.db.updateStats('totalMessages');
-                await this.db.updateStats('aiMessages'); // Increment AI messages stat
-
-                Logger.info(`Account ${index + 1} sent auto message to channel ${channel.name} (${channelId})`);
-            } catch (error) {
-                Logger.error(`Failed to send auto message for account ${index + 1}: ${error.message}`);
-                await this.db.updateStats('errors');
-            }
-        }
-
-        async handleAccountError(index, error) {
-            await this.db.updateStats('errors'); // Increment error statistics
-            const attempts = this.reconnectAttempts.get(index) || 0;
-            this.stopMessageLoop(index); // Stop message loop immediately on error
-
-            // Attempt to reconnect up to 5 times with exponential backoff
-            if (attempts < 5) {
-                this.reconnectAttempts.set(index, attempts + 1);
-                const delay = Math.min(5000 * Math.pow(2, attempts), 60000); // Max delay 60 seconds
-
-                setTimeout(() => {
-                    Logger.info(`Attempting to reconnect account ${index + 1} (attempt ${attempts + 1})`);
-                    const token = this.config.get('tokens')[index];
-                    if (token) {
-                        this.startAccount(token, index);
-                    } else {
-                        Logger.error(`No token found for account ${index + 1} to reconnect.`);
-                    }
-                }, delay);
-                await this.db.updateStats('reconnects');
-            } else {
-                Logger.error(`Account ${index + 1} failed after ${this.config.get('security.maxLoginAttempts')} reconnection attempts. Please check token or network.`);
-                this.status.set(index, 'failed'); // Mark as failed after max attempts
-            }
-        }
-
-        getAccountsStatus() {
-            const accounts = [];
-            const tokens = this.config.get('tokens');
-
-            tokens.forEach((token, index) => {
-                const client = this.clients.get(index);
-                accounts.push({
-                    index,
-                    username: client?.user?.username || 'Unknown',
-                    status: this.status.get(index) || 'offline',
-                    reconnectAttempts: this.reconnectAttempts.get(index) || 0
-                });
-            });
-
-            return accounts;
-        }
-
-        async startAllAccounts() {
-            const tokens = this.config.get('tokens');
-            if (tokens.length === 0) {
-                Logger.warn('No Discord tokens found in .env. Please add DISCORD_TOKENS.');
-                return;
-            }
-            Logger.info(`Starting ${tokens.length} Discord accounts...`);
-            const promises = tokens.map((token, index) => this.startAccount(token, index));
-            await Promise.allSettled(promises); // Wait for all accounts to attempt starting
-            Logger.info('All account start attempts completed.');
-        }
+  async stopAccount(index) {
+    const client = this.clients.get(index);
+    if (client) {
+      this.stopMessageLoop(index);
+      client.destroy();
+      this.clients.delete(index);
+      this.status.set(index, 'offline');
+      Logger.info(`Account ${index + 1} stopped`);
+      return true;
     }
+    return false;
+  }
 
-    // 🌐 Web Dashboard Server
-    class WebDashboardServer {
-        constructor(config, db, botManager) {
-            this.config = config; // Configuration instance
-            this.db = db; // Database instance
-            this.botManager = botManager; // BotAccountManager instance
-            this.app = express(); // Express application
-            this.server = null; // HTTP server instance
-            this.wss = null; // WebSocket server instance
-            this.setupMiddleware();
-            this.setupRoutes();
-            this.setupWebSocket();
+  startMessageLoop(index) {
+    const interval = setInterval(async () => {
+      await this.sendAutoMessage(index);
+    }, this.config.get('bot.messageInterval'));
+    
+    this.messageIntervals.set(index, interval);
+  }
+
+  stopMessageLoop(index) {
+    const interval = this.messageIntervals.get(index);
+    if (interval) {
+      clearInterval(interval);
+      this.messageIntervals.delete(index);
+    }
+  }
+
+  async sendAutoMessage(index) {
+    const client = this.clients.get(index);
+    const channelId = this.config.get('channels.conversation');
+    
+    if (!client || !channelId) return;
+
+    try {
+      const channel = await client.channels.fetch(channelId);
+      const message = this.aiGenerator.generateMessage('casual', this.config.get('bot.language'));
+      
+      await channel.send(message);
+      await this.db.updateStats('totalMessages');
+      
+      Logger.info(`Account ${index + 1} sent auto message`);
+    } catch (error) {
+      Logger.error(`Failed to send auto message for account ${index + 1}: ${error.message}`);
+    }
+  }
+
+  async handleAccountError(index, error) {
+    await this.db.updateStats('errors');
+    const attempts = this.reconnectAttempts.get(index) || 0;
+    
+    if (attempts < 5) {
+      this.reconnectAttempts.set(index, attempts + 1);
+      const delay = Math.min(5000 * Math.pow(2, attempts), 30000);
+      
+      setTimeout(() => {
+        Logger.info(`Attempting to reconnect account ${index + 1} (attempt ${attempts + 1})`);
+        const token = this.config.get('tokens')[index];
+        this.startAccount(token, index);
+      }, delay);
+    } else {
+      Logger.error(`Account ${index + 1} failed after 5 reconnection attempts`);
+      this.status.set(index, 'failed');
+    }
+  }
+
+  getAccountsStatus() {
+    const accounts = [];
+    const tokens = this.config.get('tokens');
+    
+    tokens.forEach((token, index) => {
+      const client = this.clients.get(index);
+      accounts.push({
+        index,
+        username: client?.user?.username || 'Unknown',
+        status: this.status.get(index) || 'offline',
+        reconnectAttempts: this.reconnectAttempts.get(index) || 0
+      });
+    });
+    
+    return accounts;
+  }
+
+  async startAllAccounts() {
+    const tokens = this.config.get('tokens');
+    const promises = tokens.map((token, index) => this.startAccount(token, index));
+    await Promise.allSettled(promises);
+  }
+}
+
+// 🌐 Web Dashboard Server
+class WebDashboardServer {
+  constructor(config, db, botManager) {
+    this.config = config;
+    this.db = db;
+    this.botManager = botManager;
+    this.app = express();
+    this.server = null;
+    this.wss = null;
+    this.setupMiddleware();
+    this.setupRoutes();
+    this.setupWebSocket();
+  }
+
+  setupMiddleware() {
+    this.app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+          imgSrc: ["'self'", "data:", "https:"],
+        },
+      },
+    }));
+    this.app.use(cors());
+    this.app.use(express.json());
+    this.app.use(express.static(path.join(__dirname, 'public')));
+  }
+
+  setupRoutes() {
+    // Authentication
+    this.app.post('/api/login', async (req, res) => {
+      try {
+        const { password } = req.body;
+        const adminPassword = this.config.get('security.adminPassword');
+        
+        if (!adminPassword) {
+          return res.status(400).json({ error: 'Admin password not set' });
         }
-
-        setupMiddleware() {
-            // Apply security headers
-            this.app.use(helmet({
-                contentSecurityPolicy: {
-                    directives: {
-                        defaultSrc: ["'self'"],
-                        styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-                        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-                        imgSrc: ["'self'", "data:", "https:"],
-                        // Ensure connectSrc allows both ws and wss for the configured host and port
-                        connectSrc: ["'self'", "ws://" + this.config.get('server.host') + ":" + this.config.get('server.port'), "wss://" + this.config.get('server.host') + ":" + this.config.get('server.port')]
-                    },
-                },
-            }));
-            this.app.use(cors()); // Enable CORS for all routes
-            this.app.use(express.json()); // Parse JSON request bodies
-            // Serve static files from 'public' directory (if any)
-            this.app.use(express.static(path.join(__dirname, 'public')));
+        
+        const isValid = await bcrypt.compare(password, adminPassword);
+        if (!isValid) {
+          return res.status(401).json({ error: 'Invalid password' });
         }
+        
+        const token = jwt.sign(
+          { admin: true },
+          this.config.get('security.jwtSecret'),
+          { expiresIn: '24h' }
+        );
+        
+        res.json({ token });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
 
-        setupRoutes() {
-            // Authentication endpoint
-            this.app.post('/api/login', async (req, res) => {
-                try {
-                    const { password } = req.body;
-                    const adminPasswordHash = this.config.get('security.adminPassword');
+    // Dashboard data
+    this.app.get('/api/dashboard', this.authenticate.bind(this), async (req, res) => {
+      try {
+        const stats = this.db.db.data.stats;
+        const accounts = this.botManager.getAccountsStatus();
+        const uptime = Date.now() - stats.startTime;
+        
+        res.json({
+          stats: {
+            ...stats,
+            uptime,
+            activeAccounts: accounts.filter(a => a.status === 'online').length,
+            totalAccounts: accounts.length
+          },
+          accounts
+        });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
 
-                    if (!adminPasswordHash) {
-                        return res.status(400).json({ error: 'Admin password not set in .env. Please set ADMIN_PASSWORD.' });
-                    }
+    // Account control
+    this.app.post('/api/accounts/:index/start', this.authenticate.bind(this), async (req, res) => {
+      try {
+        const index = parseInt(req.params.index);
+        const success = await this.botManager.startAccount(this.config.get('tokens')[index], index);
+        res.json({ success });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
 
-                    // Compare provided password with stored hash
-                    const isValid = await bcrypt.compare(password, adminPasswordHash);
-                    if (!isValid) {
-                        // Implement login attempt tracking here if needed
-                        return res.status(401).json({ error: 'Invalid password' });
-                    }
+    this.app.post('/api/accounts/:index/stop', this.authenticate.bind(this), async (req, res) => {
+      try {
+        const index = parseInt(req.params.index);
+        const success = await this.botManager.stopAccount(index);
+        res.json({ success });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
 
-                    // Generate JWT token
-                    const token = jwt.sign(
-                        { admin: true },
-                        this.config.get('security.jwtSecret'),
-                        { expiresIn: '24h' } // Token expires in 24 hours
-                    );
+    // Main dashboard page
+    this.app.get('/', (req, res) => {
+      res.send(this.getDashboardHTML());
+    });
+  }
 
-                    res.json({ token });
-                } catch (error) {
-                    Logger.error('Login error:', error.message);
-                    res.status(500).json({ error: 'Internal server error during login' });
-                }
-            });
-
-            // Dashboard data endpoint (requires authentication)
-            this.app.get('/api/dashboard', this.authenticate.bind(this), async (req, res) => {
-                try {
-                    // Ensure db.data is read and available
-                    await this.db.db.read(); // Read the latest data from the database
-                    const stats = this.db.db.data.stats;
-                    const accounts = this.botManager.getAccountsStatus();
-                    const uptime = Date.now() - stats.startTime;
-
-                    res.json({
-                        stats: {
-                            ...stats,
-                            uptime,
-                            activeAccounts: accounts.filter(a => a.status === 'online').length,
-                            totalAccounts: accounts.length
-                        },
-                        accounts
-                    });
-                } catch (error) {
-                    Logger.error('Dashboard data fetch error:', error.message);
-                    res.status(500).json({ error: 'Failed to fetch dashboard data' });
-                }
-            });
-
-            // Account control endpoints (start/stop, requires authentication)
-            this.app.post('/api/accounts/:index/start', this.authenticate.bind(this), async (req, res) => {
-                try {
-                    const index = parseInt(req.params.index);
-                    const tokens = this.config.get('tokens');
-                    if (index < 0 || index >= tokens.length) {
-                        return res.status(400).json({ error: 'Invalid account index.' });
-                    }
-                    const success = await this.botManager.startAccount(tokens[index], index);
-                    res.json({ success });
-                } catch (error) {
-                    Logger.error(`Error starting account ${req.params.index}:`, error.message);
-                    res.status(500).json({ error: `Failed to start account: ${error.message}` });
-                }
-            });
-
-            this.app.post('/api/accounts/:index/stop', this.authenticate.bind(this), async (req, res) => {
-                try {
-                    const index = parseInt(req.params.index);
-                    const tokens = this.config.get('tokens');
-                    if (index < 0 || index >= tokens.length) {
-                        return res.status(400).json({ error: 'Invalid account index.' });
-                    }
-                    const success = await this.botManager.stopAccount(index);
-                    res.json({ success });
-                } catch (error) {
-                    Logger.error(`Error stopping account ${req.params.index}:`, error.message);
-                    res.status(500).json({ error: `Failed to stop account: ${error.message}` });
-                }
-            });
-
-            // Serve the main dashboard HTML page
-            this.app.get('/', (req, res) => {
-                res.send(this.getDashboardHTML());
-            });
+  setupWebSocket() {
+    this.wss = new WebSocket.Server({ noServer: true });
+    
+    this.wss.on('connection', (ws) => {
+      Logger.info('WebSocket client connected');
+      
+      // Send initial data
+      this.sendDashboardUpdate(ws);
+      
+      // Send updates every 5 seconds
+      const interval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          this.sendDashboardUpdate(ws);
         }
+      }, 5000);
+      
+      ws.on('close', () => {
+        clearInterval(interval);
+        Logger.info('WebSocket client disconnected');
+      });
+    });
+  }
 
-        setupWebSocket() {
-            // Create a WebSocket server attached to the HTTP server
-            this.wss = new WebSocket.Server({ noServer: true });
-
-            this.wss.on('connection', (ws) => {
-                Logger.info('WebSocket client connected');
-
-                // Send initial dashboard data to the new client
-                this.sendDashboardUpdate(ws);
-
-                // Set up an interval to send dashboard updates every 5 seconds
-                const interval = setInterval(() => {
-                    if (ws.readyState === WebSocket.OPEN) {
-                        this.sendDashboardUpdate(ws);
-                    }
-                }, 5000);
-
-                ws.on('close', () => {
-                    clearInterval(interval); // Clear interval when client disconnects
-                    Logger.info('WebSocket client disconnected');
-                });
-
-                ws.on('error', (error) => {
-                    Logger.error('WebSocket error:', error.message);
-                });
-            });
+  async sendDashboardUpdate(ws) {
+    try {
+      const stats = this.db.db.data.stats;
+      const accounts = this.botManager.getAccountsStatus();
+      
+      ws.send(JSON.stringify({
+        type: 'dashboard_update',
+        data: {
+          stats: {
+            ...stats,
+            uptime: Date.now() - stats.startTime,
+            activeAccounts: accounts.filter(a => a.status === 'online').length
+          },
+          accounts
         }
+      }));
+    } catch (error) {
+      Logger.error('Failed to send WebSocket update', error);
+    }
+  }
 
-        async sendDashboardUpdate(ws) {
-            try {
-                await this.db.db.read(); // Read the latest data from the database
-                const stats = this.db.db.data.stats;
-                const accounts = this.botManager.getAccountsStatus();
+  authenticate(req, res, next) {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+    
+    try {
+      jwt.verify(token, this.config.get('security.jwtSecret'));
+      next();
+    } catch (error) {
+      res.status(401).json({ error: 'Invalid token' });
+    }
+  }
 
-                // Send dashboard data as a JSON string
-                ws.send(JSON.stringify({
-                    type: 'dashboard_update',
-                    data: {
-                        stats: {
-                            ...stats,
-                            uptime: Date.now() - stats.startTime,
-                            activeAccounts: accounts.filter(a => a.status === 'online').length,
-                            totalAccounts: accounts.length // Include total accounts for active/total display
-                        },
-                        accounts
-                    }
-                }));
-            } catch (error) {
-                Logger.error('Failed to send WebSocket update:', error.message);
-            }
-        }
-
-        // Middleware to authenticate requests using JWT
-        authenticate(req, res, next) {
-            const token = req.headers.authorization?.replace('Bearer ', '');
-
-            if (!token) {
-                return res.status(401).json({ error: 'No token provided' });
-            }
-
-            try {
-                jwt.verify(token, this.config.get('security.jwtSecret')); // Verify token
-                next(); // Proceed to the next middleware/route handler
-            } catch (error) {
-                Logger.warn('Invalid token attempt:', error.message);
-                res.status(401).json({ error: 'Invalid or expired token' });
-            }
-        }
-
-        // Returns the HTML for the web dashboard
-        getDashboardHTML() {
-            // This is a single-page application structure that loads data dynamically via API and WebSockets.
-            // Tailwind CSS is not used here as the original code uses inline styles and a single CSS block.
-            // If Tailwind was requested, a different structure would be needed.
-            return `
+  getDashboardHTML() {
+    return `
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -709,44 +613,40 @@ class DependencyManager {
     <title>Discord SuperBot Pro - Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* General Reset and Box Sizing */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        /* Body Styling */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Gradient background */
-            min-height: 100vh; /* Full viewport height */
-            color: #333; /* Default text color */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
         }
 
-        /* Container for dashboard content */
         .container {
             max-width: 1200px;
-            margin: 0 auto; /* Center the container */
+            margin: 0 auto;
             padding: 20px;
         }
 
-        /* Header Section Styling */
         .header {
-            background: rgba(255, 255, 255, 0.1); /* Semi-transparent white background */
-            backdrop-filter: blur(10px); /* Frosted glass effect */
-            border-radius: 20px; /* Rounded corners */
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
             padding: 30px;
             margin-bottom: 30px;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .header h1 {
             color: white;
             font-size: 2.5em;
             margin-bottom: 10px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3); /* Text shadow for depth */
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
         .header p {
@@ -754,27 +654,25 @@ class DependencyManager {
             font-size: 1.1em;
         }
 
-        /* Statistics Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Responsive grid columns */
-            gap: 20px; /* Gap between grid items */
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
             margin-bottom: 30px;
         }
 
-        /* Individual Stat Card */
         .stat-card {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 15px;
             padding: 25px;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth hover effects */
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .stat-card:hover {
-            transform: translateY(-5px); /* Lift effect on hover */
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2); /* Larger shadow on hover */
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
 
         .stat-value {
@@ -789,7 +687,6 @@ class DependencyManager {
             font-size: 1.1em;
         }
 
-        /* Accounts Section */
         .accounts-section {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
@@ -806,14 +703,13 @@ class DependencyManager {
             text-align: center;
         }
 
-        /* Individual Account Card */
         .account-card {
-            background: rgba(255, 255, 255, 0.05); /* Very subtle background */
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 15px;
             display: flex;
-            justify-content: space-between; /* Space out content and buttons */
+            justify-content: space-between;
             align-items: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
@@ -828,52 +724,45 @@ class DependencyManager {
             margin-bottom: 5px;
         }
 
-        /* Status Badges */
         .account-status {
             padding: 5px 12px;
-            border-radius: 20px; /* Pill shape */
+            border-radius: 20px;
             font-size: 0.9em;
             font-weight: bold;
         }
 
         .status-online {
-            background: #27ae60; /* Green */
+            background: #27ae60;
             color: white;
         }
 
         .status-offline {
-            background: #e74c3c; /* Red */
+            background: #e74c3c;
             color: white;
         }
 
         .status-connecting {
-            background: #f39c12; /* Orange */
+            background: #f39c12;
             color: white;
         }
 
-        .status-error, .status-failed {
-            background: #c0392b; /* Darker red for errors/failed */
-            color: white;
-        }
-
-        /* Buttons */
         .btn {
             padding: 10px 20px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
-            transition: all 0.3s ease; /* Smooth transitions for hover */
+            transition: all 0.3s ease;
             margin: 0 5px;
         }
 
         .btn-primary {
-            background: #3498db; /* Blue */
+            background: #3498db;
             color: white;
         }
 
         .btn-danger {
-            background: #e74c3c; /* Red */
+            background: #e74c3c;
             color: white;
         }
 
@@ -882,10 +771,9 @@ class DependencyManager {
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
-        /* Login Form Styling */
         .login-form {
             max-width: 400px;
-            margin: 100px auto; /* Center vertically and horizontally */
+            margin: 100px auto;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             padding: 40px;
@@ -911,7 +799,6 @@ class DependencyManager {
             color: rgba(255, 255, 255, 0.6);
         }
 
-        /* Loading Spinner */
         .loading {
             display: inline-block;
             width: 20px;
@@ -919,19 +806,17 @@ class DependencyManager {
             border: 3px solid rgba(255,255,255,.3);
             border-radius: 50%;
             border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite; /* Spinning animation */
+            animation: spin 1s ease-in-out infinite;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        /* Utility Class for Hiding Elements */
         .hidden {
             display: none;
         }
 
-        /* Alert Messages */
         .alert {
             padding: 15px;
             margin-bottom: 20px;
@@ -953,7 +838,6 @@ class DependencyManager {
     </style>
 </head>
 <body>
-    <!-- Login Form Section -->
     <div id="loginForm" class="login-form">
         <h2 style="color: white; text-align: center; margin-bottom: 30px;">🚀 Discord SuperBot Pro</h2>
         <div id="loginError" class="alert alert-error hidden"></div>
@@ -968,7 +852,6 @@ class DependencyManager {
         </form>
     </div>
 
-    <!-- Dashboard Section (initially hidden) -->
     <div id="dashboard" class="container hidden">
         <div class="header">
             <h1>🤖 Discord SuperBot Pro</h1>
@@ -989,4 +872,383 @@ class DependencyManager {
                 <div class="stat-label">⏰ مدة التشغيل</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value"�
+                <div class="stat-value" id="aiMessages">0</div>
+                <div class="stat-label">🧠 رسائل الذكاء الاصطناعي</div>
+            </div>
+        </div>
+
+        <div class="accounts-section">
+            <h2 class="section-title">إدارة الحسابات</h2>
+            <div id="accountsList"></div>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('token');
+        let ws = null;
+
+        if (token) {
+            showDashboard();
+        }
+
+        async function login(event) {
+            event.preventDefault();
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const loginLoading = document.getElementById('loginLoading');
+            const loginError = document.getElementById('loginError');
+
+            loginBtn.classList.add('hidden');
+            loginLoading.classList.remove('hidden');
+            loginError.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    token = data.token;
+                    localStorage.setItem('token', token);
+                    showDashboard();
+                } else {
+                    loginError.textContent = data.error || 'خطأ في تسجيل الدخول';
+                    loginError.classList.remove('hidden');
+                }
+            } catch (error) {
+                loginError.textContent = 'خطأ في الاتصال بالخادم';
+                loginError.classList.remove('hidden');
+            }
+
+            loginBtn.classList.remove('hidden');
+            loginLoading.classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            connectWebSocket();
+            loadDashboardData();
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(\`\${protocol}//\${window.location.host}\`);
+
+            ws.onmessage = function(event) {
+                const message = JSON.parse(event.data);
+                if (message.type === 'dashboard_update') {
+                    updateDashboard(message.data);
+                }
+            };
+
+            ws.onclose = function() {
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/dashboard', {
+                    headers: {
+                        'Authorization': \`Bearer \${token}\`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateDashboard(data);
+                } else if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard data:', error);
+            }
+        }
+
+        function updateDashboard(data) {
+            const { stats, accounts } = data;
+
+            // Update stats
+            document.getElementById('totalMessages').textContent = stats.totalMessages.toLocaleString();
+            document.getElementById('activeAccounts').textContent = \`\${stats.activeAccounts}/\${stats.totalAccounts}\`;
+            document.getElementById('uptime').textContent = formatUptime(stats.uptime);
+            document.getElementById('aiMessages').textContent = stats.aiMessages.toLocaleString();
+
+            // Update accounts list
+            const accountsList = document.getElementById('accountsList');
+            accountsList.innerHTML = accounts.map(account => \`
+                <div class="account-card">
+                    <div class="account-info">
+                        <div class="account-name">#\${account.index + 1} - \${account.username}</div>
+                        <span class="account-status status-\${account.status}">\${getStatusText(account.status)}</span>
+                    </div>
+                    <div>
+                        \${account.status === 'online' ? \`
+                            <button class="btn btn-danger" onclick="controlAccount(\${account.index}, 'stop')">
+                                إيقاف
+                            </button>
+                        \` : \`
+                            <button class="btn btn-primary" onclick="controlAccount(\${account.index}, 'start')">
+                                تشغيل
+                            </button>
+                        \`}
+                    </div>
+                </div>
+            \`).join('');
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                online: 'متصل',
+                offline: 'غير متصل',
+                connecting: 'يتصل...',
+                error: 'خطأ',
+                failed: 'فشل'
+            };
+            return statusMap[status] || status;
+        }
+
+        function formatUptime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const remainingSeconds = seconds % 60;
+            
+            if (hours > 0) {
+                return \`\${hours}h \${minutes}m \${remainingSeconds}s\`;
+            } else if (minutes > 0) {
+                return \`\${minutes}m \${remainingSeconds}s\`;
+            } else {
+                return \`\${remainingSeconds}s\`;
+            }
+        }
+
+        async function controlAccount(index, action) {
+            try {
+                const response = await fetch(\`/api/accounts/\${index}/\${action}\`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': \`Bearer \${token}\`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('فشل في تنفيذ العملية');
+                }
+
+                // Refresh data immediately
+                loadDashboardData();
+            } catch (error) {
+                alert('خطأ: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
+    `;
+  }
+
+  start() {
+    this.server = this.app.listen(this.config.get('server.port'), () => {
+      Logger.success(`🌐 Dashboard server running on http://localhost:${this.config.get('server.port')}`);
+    });
+
+    this.server.on('upgrade', (request, socket, head) => {
+      this.wss.handleUpgrade(request, socket, head, (ws) => {
+        this.wss.emit('connection', ws, request);
+      });
+    });
+  }
+}
+
+// 🎯 Main Application Class
+class DiscordSuperBotPro {
+  constructor() {
+    this.config = new ConfigManager();
+    this.db = new DatabaseManager();
+    this.botManager = new BotAccountManager(this.config, this.db);
+    this.webServer = new WebDashboardServer(this.config, this.db, this.botManager);
+    
+    global.db = this.db;
+    this.setupEventHandlers();
+    this.setupScheduledTasks();
+  }
+
+  setupEventHandlers() {
+    process.on('uncaughtException', (error) => {
+      Logger.error('Uncaught Exception:', error);
+      this.db.updateStats('errors');
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      Logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      this.db.updateStats('errors');
+    });
+
+    process.on('SIGINT', () => {
+      Logger.info('Shutting down gracefully...');
+      this.shutdown();
+    });
+
+    process.on('SIGTERM', () => {
+      Logger.info('Received SIGTERM, shutting down...');
+      this.shutdown();
+    });
+  }
+
+  setupScheduledTasks() {
+    // Memory cleanup every hour
+    cron.schedule('0 * * * *', () => {
+      if (global.gc) {
+        global.gc();
+        Logger.info('Memory cleanup performed');
+      }
+    });
+
+    // Daily statistics report
+    cron.schedule('0 0 * * *', async () => {
+      const stats = this.db.db.data.stats;
+      Logger.info(`📊 Daily Report - Messages: ${stats.totalMessages}, AI: ${stats.aiMessages}, Errors: ${stats.errors}`);
+    });
+
+    // Account health check every 5 minutes
+    cron.schedule('*/5 * * * *', () => {
+      this.performHealthCheck();
+    });
+  }
+
+  async performHealthCheck() {
+    const accounts = this.botManager.getAccountsStatus();
+    const offlineAccounts = accounts.filter(a => a.status === 'offline' || a.status === 'error');
+    
+    if (offlineAccounts.length > 0) {
+      Logger.warn(`Health check: ${offlineAccounts.length} accounts are offline`);
+      
+      // Attempt to restart failed accounts
+      for (const account of offlineAccounts) {
+        if (account.reconnectAttempts < 3) {
+          Logger.info(`Attempting to restart account ${account.index + 1}`);
+          const token = this.config.get('tokens')[account.index];
+          await this.botManager.startAccount(token, account.index);
+        }
+      }
+    }
+  }
+
+  async initialize() {
+    try {
+      Logger.info('🚀 Initializing Discord SuperBot Pro...');
+      
+      // Validate configuration
+      if (!this.validateConfig()) {
+        Logger.error('❌ Configuration validation failed');
+        return false;
+      }
+
+      // Initialize database
+      await this.db.init();
+      Logger.success('✅ Database initialized');
+
+      // Start bot accounts
+      await this.botManager.startAllAccounts();
+      Logger.success('✅ Bot accounts started');
+
+      // Start web server
+      this.webServer.start();
+      Logger.success('✅ Web dashboard started');
+
+      Logger.success('🎉 Discord SuperBot Pro is ready!');
+      return true;
+    } catch (error) {
+      Logger.error('❌ Initialization failed:', error);
+      return false;
+    }
+  }
+
+  validateConfig() {
+    const tokens = this.config.get('tokens');
+    const controlChannel = this.config.get('channels.control');
+    const conversationChannel = this.config.get('channels.conversation');
+
+    if (!tokens || tokens.length === 0) {
+      Logger.error('No tokens configured');
+      return false;
+    }
+
+    if (!controlChannel || !conversationChannel) {
+      Logger.error('Channel IDs not configured');
+      return false;
+    }
+
+    return true;
+  }
+
+  shutdown() {
+    Logger.info('Shutting down Discord SuperBot Pro...');
+    
+    // Stop all bot accounts
+    this.config.get('tokens').forEach((_, index) => {
+      this.botManager.stopAccount(index);
+    });
+
+    // Close web server
+    if (this.webServer.server) {
+      this.webServer.server.close();
+    }
+
+    // Close WebSocket server
+    if (this.webServer.wss) {
+      this.webServer.wss.close();
+    }
+
+    Logger.info('✅ Shutdown complete');
+    process.exit(0);
+  }
+}
+
+// 🚀 Application Entry Point
+async function main() {
+  console.log(chalk.cyan(`
+  ██████╗ ██╗███████╗ ██████╗ ██████╗ ██████╗ ██████╗     ██████╗ ██████╗  ██████╗ 
+  ██╔══██╗██║██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔══██╗    ██╔══██╗██╔══██╗██╔═══██╗
+  ██║  ██║██║███████╗██║     ██║   ██║██████╔╝██║  ██║    ██████╔╝██████╔╝██║   ██║
+  ██║  ██║██║╚════██║██║     ██║   ██║██╔══██╗██║  ██║    ██╔═══╝ ██╔══██╗██║   ██║
+  ██████╔╝██║███████║╚██████╗╚██████╔╝██║  ██║██████╔╝    ██║     ██║  ██║╚██████╔╝
+  ╚═════╝ ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═════╝     ╚═╝     ╚═╝  ╚═╝ ╚═════╝ 
+  
+  🚀 Discord SuperBot Pro - Professional Edition
+  💎 Advanced Multi-Account Management System
+  ⚡ Built with Modern Architecture & Security
+  `));
+
+  const app = new DiscordSuperBotPro();
+  const success = await app.initialize();
+  
+  if (!success) {
+    Logger.error('❌ Failed to start application');
+    process.exit(1);
+  }
+}
+
+// Start the application
+main().catch((error) => {
+  Logger.error('❌ Application crashed:', error);
+  process.exit(1);
+});
+
+module.exports = {
+  DiscordSuperBotPro,
+  ConfigManager,
+  DatabaseManager,
+  BotAccountManager,
+  WebDashboardServer,
+  Logger
+}; 
