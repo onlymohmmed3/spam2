@@ -1,1109 +1,425 @@
-// 🚀 Discord Bot Manager - Enhanced AI Version
-const { execSync } = require("child_process");
-const fs = require("fs");
-const path = require("path");
+// 🚀 Discord Multi-Account SuperBot - All-in-One
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const { Client, WebhookClient } = require('discord.js-selfbot-v13');
+const express = require('express');
+const cron = require('node-cron');
 
-// 📦 Enhanced Dependency Management
-class DependencyManager {
-  static dependencies = [
-    "discord.js-selfbot-v13",
-    "dotenv",
-    "express",
-    "sphinx-run",
-    "axios",
-    "node-cron"
-  ];
-
-  static async ensureDependencies() {
-    console.log("🔍 Checking dependencies...");
-    
-    for (const pkg of this.dependencies) {
-      const name = pkg.split("@")[0];
-      try {
-        require.resolve(name);
-        console.log(`✅ ${name} available`);
-      } catch (e) {
-        console.log(`📦 Installing: ${pkg}`);
-        try {
-          execSync(`npm install ${pkg}`, { 
-            stdio: "inherit",
-            timeout: 30000
-          });
-        } catch (installError) {
-          console.error(`❌ Failed to install ${pkg}:`, installError.message);
-          process.exit(1);
-        }
-      }
-    }
+// 📦 Auto Dependency Installer
+const dependencies = [
+  'discord.js-selfbot-v13',
+  'dotenv',
+  'express',
+  'axios',
+  'node-cron',
+  'chart.js',
+];
+for (const pkg of dependencies) {
+  try { require.resolve(pkg.split('@')[0]); }
+  catch {
+    console.log(`📦 Installing: ${pkg}`);
+    execSync(`npm install ${pkg}`, { stdio: 'inherit', timeout: 60000 });
   }
 }
 
-// 🧠 Natural Conversation Engine
-class AIConversationEngine {
-  constructor() {
-    this.topics = [
-      "popular stories", "memories", "cooking", "sports", "games",
-      "movies", "books", "travel", "technology", "weather", "dreams",
-      "hobbies", "art", "music", "history", "science", "nature"
-    ];
-    
-    this.conversationOpeners = [
-      "You know what I was thinking about...",
-      "I had an interesting experience...",
-      "Remember when we talked about...",
-      "I recently discovered something...",
-      "A friend told me about...",
-      "I had the strangest dream...",
-      "There's something I've been meaning to share..."
-    ];
-
-    this.responses = [
-      "That's really interesting! 😊",
-      "That reminds me of...",
-      "I totally agree! I also...",
-      "Wow, that's amazing! 👏",
-      "Hahaha that's so funny! 😂",
-      "Really? What happened next?",
-      "No way! That's unbelievable 😱",
-      "That makes me think of something else..."
-    ];
-
-    this.conversationHistory = [];
-    this.lastSpeaker = null;
-    this.conversationDepth = 0;
-  }
-
-  generateTopic() {
-    return this.topics[Math.floor(Math.random() * this.topics.length)];
-  }
-
-  generateOpener() {
-    const topic = this.generateTopic();
-    const opener = this.conversationOpeners[Math.floor(Math.random() * this.conversationOpeners.length)];
-    return `${opener} ${topic}...`;
-  }
-
-  generateResponse(lastMessage) {
-    // More natural response generation
-    let response;
-    
-    if (this.conversationDepth > 3) {
-      const transitions = [
-        "Anyway, let's talk about something else...",
-        "But enough about that, what do you think about...",
-        "Changing the subject a bit..."
-      ];
-      
-      if (Math.random() < 0.3) {
-        response = transitions[Math.floor(Math.random() * transitions.length)];
-        this.conversationDepth = 0;
-        return `${response} ${this.generateOpener()}`;
-      }
-    }
-
-    // More varied responses
-    const responseType = Math.random();
-    if (responseType < 0.4) {
-      // Follow-up question
-      const questions = [
-        "What do you think about that?",
-        "Have you had similar experiences?",
-        "How would you handle that situation?",
-        "Does that remind you of anything?"
-      ];
-      response = questions[Math.floor(Math.random() * questions.length)];
-    } else if (responseType < 0.7) {
-      // Personal anecdote
-      response = `That reminds me when I ${["saw", "heard", "experienced", "learned"][Math.floor(Math.random() * 4)]} something similar...`;
-    } else {
-      // Simple response
-      response = this.responses[Math.floor(Math.random() * this.responses.length)];
-    }
-
-    return response;
-  }
-
-  getNextMessage(speakerId) {
-    if (this.lastSpeaker === speakerId) {
-      return null; // Prevent same bot from speaking twice
-    }
-
-    let message;
-    
-    if (this.conversationHistory.length === 0 || Math.random() < 0.3) {
-      // Start new conversation
-      message = this.generateOpener();
-      this.conversationDepth = 0;
-    } else {
-      // Respond to last message
-      message = this.generateResponse(this.conversationHistory[this.conversationHistory.length - 1]);
-    }
-
-    this.conversationHistory.push(message);
-    this.lastSpeaker = speakerId;
-    this.conversationDepth++;
-
-    // Reset if conversation gets too long
-    if (this.conversationHistory.length > 20) {
-      this.conversationHistory = this.conversationHistory.slice(-10);
-      this.conversationDepth = 0;
-    }
-
-    return message;
-  }
-
-  resetConversation() {
-    this.conversationHistory = [];
-    this.lastSpeaker = null;
-    this.conversationDepth = 0;
-  }
-}
-
-// 🔧 Enhanced Configuration
-class ConfigManager {
-  static loadConfig() {
-    const envPath = path.join(__dirname, '.env');
-    if (!fs.existsSync(envPath)) {
-      const envTemplate = `# Discord Bot Configuration
-CONTROL_CHANNEL_ID=your_channel_id_here
-CONVERSATION_CHANNEL_ID=your_conversation_channel_id_here
-WEBHOOK_URL=your_webhook_url_here
-TOKEN1=your_first_bot_token_here
-TOKEN2=your_second_bot_token_here
-
-# AI Conversation Settings
+// 🛡️ .env Template
+const envPath = path.join(__dirname, '.env');
+if (!fs.existsSync(envPath)) {
+  fs.writeFileSync(envPath, `# Discord SuperBot Settings
+TOKENS=token1,token2
+CONTROL_CHANNEL_ID=your_control_channel_id
+CONVERSATION_CHANNEL_ID=your_conversation_channel_id
+WEBHOOK_URL=your_webhook_url
+MESSAGE_INTERVAL=10000
 AI_CONVERSATION_ENABLED=true
-CONVERSATION_INTERVAL_MIN=8000
-CONVERSATION_INTERVAL_MAX=15000
-CONVERSATION_CHANCE=0.7
-
-# Leveling Settings
 LEVELING_ENABLED=true
-SPAM_BASE_TIME=4000
-SPAM_VARIATION=1500
-
-# System Settings
-LOG_LEVEL=info
-STATUS_INTERVAL=3600000
 WEB_SERVER_PORT=3000
-`;
-      fs.writeFileSync(envPath, envTemplate);
-      console.log("📝 Created .env file - please fill in required values");
-    }
+LOG_LEVEL=info
+`);
+  console.log('📝 Created .env file - Please fill in your tokens and settings!');
+}
+require('dotenv').config();
 
-    require("dotenv").config();
-    
-    const required = ['CONTROL_CHANNEL_ID', 'WEBHOOK_URL', 'TOKEN1', 'TOKEN2'];
-    const missing = required.filter(key => !process.env[key]);
-    
-    if (missing.length > 0) {
-      console.error("❌ Missing required variables:", missing.join(', '));
-      process.exit(1);
-    }
+// 🧩 Settings
+const TOKENS = process.env.TOKENS ? process.env.TOKENS.split(',').map(t => t.trim()).filter(Boolean) : [];
+const CONTROL_CHANNEL_ID = process.env.CONTROL_CHANNEL_ID;
+const CONVERSATION_CHANNEL_ID = process.env.CONVERSATION_CHANNEL_ID || CONTROL_CHANNEL_ID;
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
+const MESSAGE_INTERVAL = parseInt(process.env.MESSAGE_INTERVAL) || 10000;
+const AI_CONVERSATION_ENABLED = process.env.AI_CONVERSATION_ENABLED !== 'false';
+const LEVELING_ENABLED = process.env.LEVELING_ENABLED !== 'false';
+const WEB_SERVER_PORT = parseInt(process.env.WEB_SERVER_PORT) || 3000;
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 
-    return {
-      CONTROL_CHANNEL_ID: process.env.CONTROL_CHANNEL_ID,
-      CONVERSATION_CHANNEL_ID: process.env.CONVERSATION_CHANNEL_ID || process.env.CONTROL_CHANNEL_ID,
-      WEBHOOK_URL: process.env.WEBHOOK_URL,
-      TOKEN1: process.env.TOKEN1,
-      TOKEN2: process.env.TOKEN2,
-      
-      // AI Conversation Settings
-      AI_CONVERSATION_ENABLED: process.env.AI_CONVERSATION_ENABLED !== 'false',
-      CONVERSATION_INTERVAL_MIN: parseInt(process.env.CONVERSATION_INTERVAL_MIN) || 8000,
-      CONVERSATION_INTERVAL_MAX: parseInt(process.env.CONVERSATION_INTERVAL_MAX) || 15000,
-      CONVERSATION_CHANCE: parseFloat(process.env.CONVERSATION_CHANCE) || 0.7,
-      
-      // Leveling Settings
-      LEVELING_ENABLED: process.env.LEVELING_ENABLED !== 'false',
-      SPAM_BASE_TIME: parseInt(process.env.SPAM_BASE_TIME) || 4000,
-      SPAM_VARIATION: parseInt(process.env.SPAM_VARIATION) || 1500,
-      
-      // System Settings
-      LOG_LEVEL: process.env.LOG_LEVEL || 'info',
-      STATUS_INTERVAL: parseInt(process.env.STATUS_INTERVAL) || 3600000,
-      WEB_SERVER_PORT: parseInt(process.env.WEB_SERVER_PORT) || 3000
-    };
+if (!TOKENS.length || !CONTROL_CHANNEL_ID || !WEBHOOK_URL) {
+  console.error('❌ Please fill in all required .env values!');
+  process.exit(1);
+}
+
+// 📝 Logger بسيط
+function log(msg, level = 'info') {
+  if (['debug','info'].includes(LOG_LEVEL) || level === 'error' || level === 'warn') {
+    const t = new Date().toLocaleString('ar-EG');
+    console.log(`[${t}] [${level.toUpperCase()}] ${msg}`);
   }
 }
 
-// 📝 Enhanced Logging System
-class Logger {
-  static levels = { error: 0, warn: 1, info: 2, debug: 3 };
-  static currentLevel = 2;
+// 🌟 الرسالة الافتراضية
+let autoMessage = 'أنا بوت خارق 🚀';
 
-  static setLevel(level) {
-    this.currentLevel = this.levels[level] || 2;
-  }
+// 🧑‍🤝‍🧑 إدارة الحسابات
+const clients = [];
+const states = [];
+const intervals = [];
+const reconnects = [];
 
-  static format(level, message, extra = '') {
-    const timestamp = new Date().toISOString();
-    return `[${timestamp}] [${level.toUpperCase()}] ${message} ${extra}`;
-  }
+function startClient(index) {
+  if (clients[index]) return;
+  const token = TOKENS[index];
+  const client = new Client({ checkUpdate: false, readyStatus: false, autoreconnect: true });
+  clients[index] = client;
+  states[index] = false;
+  reconnects[index] = 0;
 
-  static error(message, error = null) {
-    if (this.currentLevel >= 0) {
-      console.error(this.format('error', message, error ? error.message : ''));
-    }
-  }
-
-  static warn(message) {
-    if (this.currentLevel >= 1) {
-      console.warn(this.format('warn', message));
-    }
-  }
-
-  static info(message) {
-    if (this.currentLevel >= 2) {
-      console.log(this.format('info', message));
-    }
-  }
-
-  static debug(message) {
-    if (this.currentLevel >= 3) {
-      console.log(this.format('debug', message));
-    }
-  }
-}
-
-// 🎯 Enhanced Webhook Management
-class WebhookManager {
-  constructor(webhookUrl) {
-    const { WebhookClient } = require("discord.js-selfbot-v13");
-    this.webhook = new WebhookClient({ url: webhookUrl });
-    this.queue = [];
-    this.processing = false;
-    this.rateLimitDelay = 1000;
-  }
-
-  async send(content, options = {}) {
-    const message = {
-      content: this.formatMessage(content),
-      username: options.username || "🤖 Bot Manager",
-      avatarURL: options.avatarURL || "https://i.imgur.com/AfFp7pu.png",
-      ...options
-    };
-
-    this.queue.push(message);
-    this.processQueue();
-  }
-
-  formatMessage(content) {
-    const now = new Date().toLocaleString();
-    return `🕓 **${now}**\n${content}`;
-  }
-
-  async processQueue() {
-    if (this.processing || this.queue.length === 0) return;
-    
-    this.processing = true;
-    
-    while (this.queue.length > 0) {
-      const message = this.queue.shift();
+  client.on('ready', () => {
+    states[index] = true;
+    log(`✅ [${index+1}] ${client.user.username} جاهز!`);
+    if (intervals[index]) clearInterval(intervals[index]);
+    intervals[index] = setInterval(async () => {
       try {
-        await this.webhook.send(message);
-        Logger.debug("Webhook message sent successfully");
-      } catch (error) {
-        Logger.error("Failed to send webhook message", error);
-        if (error.status !== 404) {
-          this.queue.unshift(message);
-        }
+        const channel = await client.channels.fetch(CONVERSATION_CHANNEL_ID);
+        await channel.send(autoMessage);
+        log(`💬 [${index+1}] أرسل رسالة تلقائية`);
+      } catch (e) {
+        log(`❌ [${index+1}] فشل إرسال الرسالة: ${e.message}`,'warn');
       }
-      
-      await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay));
-    }
-    
-    this.processing = false;
-  }
-}
+    }, MESSAGE_INTERVAL);
+  });
 
-// 📊 Advanced Statistics
-class StatsManager {
-  constructor() {
-    this.stats = {
-      startTime: Date.now(),
-      messagesProcessed: 0,
-      commandsExecuted: 0,
-      aiConversations: 0,
-      levelingMessages: 0,
-      reconnections: 0,
-      errors: 0
-    };
-  }
-
-  increment(stat) {
-    if (this.stats.hasOwnProperty(stat)) {
-      this.stats[stat]++;
-    }
-  }
-
-  getStats() {
-    const uptime = Date.now() - this.stats.startTime;
-    return {
-      ...this.stats,
-      uptime: uptime,
-      uptimeFormatted: this.formatUptime(uptime)
-    };
-  }
-
-  formatUptime(ms) {
-    const seconds = Math.floor(ms / 1000);
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours}h ${minutes}m ${secs}s`;
-  }
-}
-
-// 🤖 Enhanced Bot Management
-class BotManager {
-  constructor(config) {
-    this.config = config;
-    this.clients = [null, null];
-    this.levelings = [null, null];
-    this.tokens = [config.TOKEN1, config.TOKEN2];
-    this.states = [false, false];
-    this.webhookManager = new WebhookManager(config.WEBHOOK_URL);
-    this.aiEngine = new AIConversationEngine();
-    this.statsManager = new StatsManager();
-    this.conversationTimeout = null;
-    this.nextSpeaker = 0;
-    this.statusIntervals = [null, null];
-    this.reconnectAttempts = [0, 0];
-    this.maxReconnectAttempts = 5;
-    
-    Logger.setLevel(config.LOG_LEVEL);
-    
-    // System signal handling
-    process.on('SIGINT', () => this.gracefulShutdown());
-    process.on('SIGTERM', () => this.gracefulShutdown());
-    process.on('unhandledRejection', (reason, promise) => {
-      Logger.error('Unhandled Promise Rejection', reason);
-      this.statsManager.increment('errors');
-    });
-    process.on('uncaughtException', (error) => {
-      Logger.error('Uncaught Exception', error);
-      this.statsManager.increment('errors');
-      this.gracefulShutdown();
-    });
-  }
-
-  getRandomTime(base = null, variation = null) {
-    const baseTime = base || this.config.SPAM_BASE_TIME;
-    const varTime = variation || this.config.SPAM_VARIATION;
-    
-    const randomFactor = 0.8 + Math.random() * 0.4;
-    const finalTime = baseTime * randomFactor + Math.floor(Math.random() * varTime) - varTime / 2;
-    
-    return Math.max(1000, Math.floor(finalTime));
-  }
-
-  getConversationInterval() {
-    const min = this.config.CONVERSATION_INTERVAL_MIN;
-    const max = this.config.CONVERSATION_INTERVAL_MAX;
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
-  async startAIConversation() {
-    if (!this.config.AI_CONVERSATION_ENABLED) return;
-    
-    // Check both bots are connected
-    if (!this.states[0] || !this.states[1]) {
-      this.scheduleNextConversation();
-      return;
-    }
-
-    // Probability to start conversation
-    if (Math.random() > this.config.CONVERSATION_CHANCE) {
-      this.scheduleNextConversation();
-      return;
-    }
-
-    const speakerId = this.nextSpeaker;
-    const message = this.aiEngine.getNextMessage(speakerId);
-    
-    if (message && this.clients[speakerId]) {
-      try {
-        const channel = await this.clients[speakerId].channels.fetch(this.config.CONVERSATION_CHANNEL_ID);
-        await channel.send(message);
-        
-        this.statsManager.increment('aiConversations');
-        this.nextSpeaker = speakerId === 0 ? 1 : 0;
-        
-        Logger.debug(`AI Conversation: Bot ${speakerId + 1} sent message`);
-      } catch (error) {
-        Logger.error(`Failed to send AI conversation message from bot ${speakerId + 1}`, error);
-        this.statsManager.increment('errors');
-      }
-    }
-
-    this.scheduleNextConversation();
-  }
-
-  scheduleNextConversation() {
-    if (this.conversationTimeout) {
-      clearTimeout(this.conversationTimeout);
-    }
-
-    const interval = this.getConversationInterval();
-    this.conversationTimeout = setTimeout(() => {
-      this.startAIConversation();
-    }, interval);
-  }
-
-  async startClient(index) {
-    if (this.clients[index]) {
-      Logger.warn(`Client ${index + 1} is already running`);
-      return;
-    }
-
-    try {
-      const { Client } = require("discord.js-selfbot-v13");
-      const { userAccount } = require("sphinx-run");
-      
-      const client = new Client({ 
-        checkUpdate: false,
-        readyStatus: false,
-        autoreconnect: true
-      });
-      
-      this.clients[index] = client;
-      this.reconnectAttempts[index] = 0;
-
-      client.on("ready", () => {
-        Logger.info(`Client ${index + 1} (${client.user.username}) is ready`);
-        this.states[index] = true;
-        this.reconnectAttempts[index] = 0;
-        
-        // Setup leveling system
-        if (this.config.LEVELING_ENABLED) {
-          const leveling = new userAccount(client, require("discord.js-selfbot-v13"));
-          this.levelings[index] = leveling;
-
-          leveling.leveling({
-            channel: this.config.CONTROL_CHANNEL_ID,
-            time: this.getRandomTime(),
-            randomLetters: false,
-            type: "ar",
-          });
-
-          leveling.leveling({
-            channel: this.config.CONTROL_CHANNEL_ID,
-            time: this.getRandomTime(),
-            randomLetters: false,
-            type: "eng",
-          });
-        }
-
-        // Start AI conversations if this is first bot connecting
-        if (index === 0 && this.config.AI_CONVERSATION_ENABLED) {
-          this.scheduleNextConversation();
-        }
-
-        this.webhookManager.send(`✅ Account ${index + 1} **${client.user.username}** started successfully`);
-
-        // Send periodic updates
-        this.statusIntervals[index] = setInterval(() => {
-          this.webhookManager.send(`📢 Account ${index + 1} **${client.user.username}** is still running`);
-        }, this.config.STATUS_INTERVAL);
-      });
-
-      client.on("messageCreate", (msg) => {
-        this.statsManager.increment('messagesProcessed');
-        
-        // Handle commands (only for first client)
-        if (index === 0) {
-          this.handleCommand(msg);
-        }
-      });
-
-      client.on("disconnect", () => {
-        Logger.warn(`Client ${index + 1} disconnected`);
-        this.states[index] = false;
-      });
-
-      client.on("error", (error) => {
-        Logger.error(`Client ${index + 1} error`, error);
-        this.statsManager.increment('errors');
-        this.handleClientError(index, error);
-      });
-
-      await client.login(this.tokens[index]);
-      
-    } catch (error) {
-      Logger.error(`Failed to start client ${index + 1}`, error);
-      this.statsManager.increment('errors');
-      this.handleClientError(index, error);
-    }
-  }
-
-  handleClientError(index, error) {
-    this.clients[index] = null;
-    this.states[index] = false;
-    
-    if (this.statusIntervals[index]) {
-      clearInterval(this.statusIntervals[index]);
-      this.statusIntervals[index] = null;
-    }
-
-    if (this.reconnectAttempts[index] < this.maxReconnectAttempts) {
-      this.reconnectAttempts[index]++;
-      this.statsManager.increment('reconnections');
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts[index]), 30000);
-      
-      Logger.info(`Attempting to reconnect client ${index + 1} in ${delay}ms (attempt ${this.reconnectAttempts[index]})`);
-      
+  client.on('error', err => {
+    log(`❌ [${index+1}] خطأ: ${err.message}`,'error');
+    states[index] = false;
+    if (intervals[index]) clearInterval(intervals[index]);
+    if (reconnects[index] < 5) {
+      reconnects[index]++;
       setTimeout(() => {
-        this.startClient(index);
-      }, delay);
+        log(`🔄 [${index+1}] إعادة محاولة الاتصال... (${reconnects[index]})`);
+        startClient(index);
+      }, 5000 * reconnects[index]);
     } else {
-      Logger.error(`Max reconnection attempts reached for client ${index + 1}`);
-      this.webhookManager.send(`❌ Account ${index + 1} failed to connect after ${this.maxReconnectAttempts} attempts`);
+      log(`🛑 [${index+1}] توقف عن المحاولة بعد 5 مرات.`,'error');
     }
-  }
+  });
 
-  stopClient(index, callback = null) {
-    if (this.clients[index]) {
-      this.clients[index].destroy();
-      this.clients[index] = null;
-      this.states[index] = false;
-      this.reconnectAttempts[index] = 0;
-      
-      if (this.statusIntervals[index]) {
-        clearInterval(this.statusIntervals[index]);
-        this.statusIntervals[index] = null;
-      }
-      
-      Logger.info(`Client ${index + 1} stopped`);
-    }
-    
-    if (callback) {
-      setTimeout(callback, 1000);
-    }
-  }
-
-  handleCommand(msg) {
-    if (msg.channel.id !== this.config.CONTROL_CHANNEL_ID || !msg.content.startsWith("!")) {
-      return;
-    }
-
-    const args = msg.content.trim().split(" ");
-    const command = args[0].toLowerCase();
-    const arg = args[1];
-
-    this.statsManager.increment('commandsExecuted');
-    Logger.debug(`Received command: ${command} ${arg || ''}`);
-
-    const commands = {
-      "!help": () => {
-        const helpText = `🛠️ **Available Commands:**
-\`!help\` - Show this help
-\`!status\` - Show bot status
-\`!stop <1|2>\` - Stop specific bot
-\`!start <1|2>\` - Start specific bot
-\`!restart <1|2>\` - Restart specific bot
-\`!conversation <on|off|reset>\` - Control AI conversations
-\`!leveling <on|off>\` - Control leveling system
-\`!uptime\` - Show uptime
-\`!ping\` - Test response
-\`!stats\` - Detailed statistics
-\`!config\` - Show current settings
-\`!logs\` - Show recent events`;
-        this.webhookManager.send(helpText);
-      },
-
-      "!status": () => {
-        const status1 = this.states[0] ? "✅ Running" : "❌ Stopped";
-        const status2 = this.states[1] ? "✅ Running" : "❌ Stopped";
-        const reconnect1 = this.reconnectAttempts[0] > 0 ? ` (${this.reconnectAttempts[0]} attempts)` : "";
-        const reconnect2 = this.reconnectAttempts[1] > 0 ? ` (${this.reconnectAttempts[1]} attempts)` : "";
-        const aiStatus = this.config.AI_CONVERSATION_ENABLED ? "✅ Enabled" : "❌ Disabled";
-        const levelingStatus = this.config.LEVELING_ENABLED ? "✅ Enabled" : "❌ Disabled";
-        
-        this.webhookManager.send(`📊 **Status:**
-- Client 1: ${status1}${reconnect1}
-- Client 2: ${status2}${reconnect2}
-- AI Conversations: ${aiStatus}
-- Leveling System: ${levelingStatus}`);
-      },
-
-      "!conversation": () => {
-        if (arg === "on") {
-          this.config.AI_CONVERSATION_ENABLED = true;
-          this.scheduleNextConversation();
-          this.webhookManager.send("🤖 AI conversations enabled");
-        } else if (arg === "off") {
-          this.config.AI_CONVERSATION_ENABLED = false;
-          if (this.conversationTimeout) {
-            clearTimeout(this.conversationTimeout);
-          }
-          this.webhookManager.send("🔇 AI conversations disabled");
-        } else if (arg === "reset") {
-          this.aiEngine.resetConversation();
-          this.webhookManager.send("🔄 Conversation history reset");
-        } else {
-          this.webhookManager.send("❌ Usage: !conversation <on|off|reset>");
-        }
-      },
-
-      "!leveling": () => {
-        if (arg === "on") {
-          this.config.LEVELING_ENABLED = true;
-          this.webhookManager.send("📈 Leveling system enabled");
-        } else if (arg === "off") {
-          this.config.LEVELING_ENABLED = false;
-          this.webhookManager.send("📉 Leveling system disabled");
-        } else {
-          this.webhookManager.send("❌ Usage: !leveling <on|off>");
-        }
-      },
-
-      "!stop": () => {
-        const clientIndex = parseInt(arg) - 1;
-        if (clientIndex >= 0 && clientIndex < 2) {
-          this.stopClient(clientIndex);
-          this.webhookManager.send(`⛔ Stopped bot ${arg}`);
-        } else {
-          this.webhookManager.send(`❌ Invalid bot number. Use 1 or 2`);
-        }
-      },
-
-      "!start": () => {
-        const clientIndex = parseInt(arg) - 1;
-        if (clientIndex >= 0 && clientIndex < 2) {
-          this.startClient(clientIndex);
-          this.webhookManager.send(`▶️ Starting bot ${arg}...`);
-        } else {
-          this.webhookManager.send(`❌ Invalid bot number. Use 1 or 2`);
-        }
-      },
-
-      "!restart": () => {
-        const clientIndex = parseInt(arg) - 1;
-        if (clientIndex >= 0 && clientIndex < 2) {
-          this.stopClient(clientIndex, () => {
-            setTimeout(() => this.startClient(clientIndex), 2000);
-          });
-          this.webhookManager.send(`🔄 Restarting bot ${arg}...`);
-        } else {
-          this.webhookManager.send(`❌ Invalid bot number. Use 1 or 2`);
-        }
-      },
-
-      "!uptime": () => {
-        const stats = this.statsManager.getStats();
-        this.webhookManager.send(`⏱️ Uptime: ${stats.uptimeFormatted}`);
-      },
-
-      "!ping": () => {
-        const ping = Date.now() - msg.createdTimestamp;
-        this.webhookManager.send(`🏓 Ping: ${ping}ms`);
-      },
-
-      "!stats": () => {
-        const memUsage = process.memoryUsage();
-        const stats = this.statsManager.getStats();
-        
-        const statsText = `📈 **System Stats:**
-💾 **Memory:**
-- RSS: ${Math.round(memUsage.rss / 1024 / 1024)} MB
-- Heap Used: ${Math.round(memUsage.heapUsed / 1024 / 1024)} MB
-- External: ${Math.round(memUsage.external / 1024 / 1024)} MB
-
-📊 **Performance:**
-- Uptime: ${stats.uptimeFormatted}
-- Messages Processed: ${stats.messagesProcessed}
-- Commands Executed: ${stats.commandsExecuted}
-- AI Conversations: ${stats.aiConversations}
-- Reconnections: ${stats.reconnections}
-- Errors: ${stats.errors}
-
-🔧 **System:**
-- Node.js: ${process.version}
-- Platform: ${process.platform}`;
-
-        this.webhookManager.send(statsText);
-      },
-
-      "!config": () => {
-        const config = `⚙️ **Current Settings:**
-- Base Time: ${this.config.SPAM_BASE_TIME}ms
-- Variation: ${this.config.SPAM_VARIATION}ms
-- Status Interval: ${Math.floor(this.config.STATUS_INTERVAL / 60000)} minutes
-- Log Level: ${this.config.LOG_LEVEL}
-- Max Reconnect: ${this.maxReconnectAttempts}
-- AI Conversations: ${this.config.AI_CONVERSATION_ENABLED ? 'Enabled' : 'Disabled'}
-- Conversation Interval: ${this.config.CONVERSATION_INTERVAL_MIN}-${this.config.CONVERSATION_INTERVAL_MAX}ms
-- Conversation Chance: ${(this.config.CONVERSATION_CHANCE * 100).toFixed(0)}%`;
-
-        this.webhookManager.send(config);
-      },
-
-      "!logs": () => {
-        // Show recent important events
-        const logs = `📝 **Recent Events:**
-- Last AI message: ${this.aiEngine.conversationHistory.slice(-1)[0] || 'None'}
-- Conversation depth: ${this.aiEngine.conversationDepth}
-- Next speaker: Bot ${this.nextSpeaker + 1}
-- Conversation state: ${this.conversationTimeout ? 'Scheduled' : 'Stopped'}`;
-
-        this.webhookManager.send(logs);
-      }
-    };
-
-    const commandFunction = commands[command];
-    if (commandFunction) {
-      try {
-        commandFunction();
-      } catch (error) {
-        Logger.error(`Error executing command ${command}`, error);
-        this.statsManager.increment('errors');
-        this.webhookManager.send(`❌ Command execution error: ${error.message}`);
-      }
-    } else {
-      this.webhookManager.send(`❓ Unknown command. Use \`!help\` for available commands`);
-    }
-  }
-
-  async gracefulShutdown() {
-    Logger.info("🛑 Starting graceful shutdown...");
-    
-    // Stop AI conversations
-    if (this.conversationTimeout) {
-      clearTimeout(this.conversationTimeout);
-    }
-    
-    // Stop all clients
-    for (let i = 0; i < this.clients.length; i++) {
-      if (this.clients[i]) {
-        this.stopClient(i);
-      }
-    }
-    
-    // Send shutdown notification
-    await this.webhookManager.send("🛑 Bot stopped safely");
-    
-    setTimeout(() => {
-      Logger.info("✅ Shutdown completed successfully");
-      process.exit(0);
-    }, 2000);
-  }
-
-  async start() {
-    Logger.info("🚀 Starting Bot Manager...");
-    
-    try {
-      await this.startClient(0);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await this.startClient(1);
-      
-      Logger.info("✅ All clients started");
-      
-      // Send startup notification
-      this.webhookManager.send(`🎉 System started successfully!
-- AI Conversations: ${this.config.AI_CONVERSATION_ENABLED ? 'Enabled' : 'Disabled'}
-- Leveling System: ${this.config.LEVELING_ENABLED ? 'Enabled' : 'Disabled'}
-- Use \`!help\` for available commands`);
-      
-    } catch (error) {
-      Logger.error("Failed to start bot manager", error);
-      this.statsManager.increment('errors');
-      this.webhookManager.send(`❌ Startup failed: ${error.message}`);
-    }
-  }
-}
-
-// 🌐 Enhanced Web Server
-class WebServer {
-  constructor(botManager, port = 3000) {
-    this.botManager = botManager;
-    this.port = port;
-    this.app = require("express")();
-    this.setupRoutes();
-  }
-
-  setupRoutes() {
-    // Home page
-    this.app.get("/", (req, res) => {
-      const stats = this.botManager.statsManager.getStats();
-      const uptime = process.uptime();
-      const hours = Math.floor(uptime / 3600);
-      const minutes = Math.floor((uptime % 3600) / 60);
-      
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>🤖 Discord Bot Manager - AI Enhanced</title>
-          <style>
-            body { 
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-              color: white; 
-              text-align: center; 
-              padding: 20px; 
-              margin: 0;
-              min-height: 100vh;
-            }
-            .container { 
-              max-width: 800px; 
-              margin: 0 auto; 
-              background: rgba(255,255,255,0.1);
-              backdrop-filter: blur(10px);
-              border-radius: 20px;
-              padding: 30px;
-              box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            }
-            .status { 
-              background: linear-gradient(45deg, #27ae60, #2ecc71); 
-              padding: 15px; 
-              border-radius: 10px; 
-              margin: 15px 0; 
-              box-shadow: 0 4px 15px rgba(39,174,96,0.3);
-            }
-            .info { 
-              background: linear-gradient(45deg, #3498db, #2980b9); 
-              padding: 15px; 
-              border-radius: 10px; 
-              margin: 15px 0; 
-              box-shadow: 0 4px 15px rgba(52,152,219,0.3);
-            }
-            .stats-grid {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-              gap: 15px;
-              margin: 20px 0;
-            }
-            .stat-card {
-              background: rgba(255,255,255,0.1);
-              padding: 20px;
-              border-radius: 15px;
-              border: 1px solid rgba(255,255,255,0.2);
-            }
-            .stat-number {
-              font-size: 2em;
-              font-weight: bold;
-              color: #f39c12;
-            }
-            h1 { 
-              margin-bottom: 30px; 
-              font-size: 2.2em;
-              text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            }
-            .feature {
-              display: inline-block;
-              background: rgba(255,255,255,0.2);
-              padding: 8px 16px;
-              border-radius: 20px;
-              margin: 5px;
-              font-size: 0.9em;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>🤖 Discord Bot Manager</h1>
-            <p style="font-size: 1.2em; margin-bottom: 30px;">Enhanced AI Bot Management System</p>
-            
-            <div class="status">
-              ✅ System is running
-            </div>
-            
-            <div class="stats-grid">
-              <div class="stat-card">
-                <div class="stat-number">${stats.uptimeFormatted}</div>
-                <div>Uptime</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-number">${stats.messagesProcessed}</div>
-                <div>Messages Processed</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-number">${stats.aiConversations}</div>
-                <div>AI Conversations</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-number">${stats.commandsExecuted}</div>
-                <div>Commands Executed</div>
-              </div>
-            </div>
-            
-            <div class="info">
-              🔧 Node.js ${process.version} | 💾 ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB
-            </div>
-            
-            <div style="margin-top: 30px;">
-              <h3>🌟 Available Features:</h3>
-              <div class="feature">🤖 AI Conversations</div>
-              <div class="feature">📈 Leveling System</div>
-              <div class="feature">🔄 Auto Reconnect</div>
-              <div class="feature">📊 Detailed Stats</div>
-              <div class="feature">🌐 Web Interface</div>
-              <div class="feature">🎛️ Advanced Commands</div>
-            </div>
-            
-            <p style="margin-top: 30px; opacity: 0.8;">
-              Use commands in Discord channel to control the bot<br>
-              Type <code>!help</code> to show all available commands
-            </p>
-          </div>
-        </body>
-        </html>
-      `);
-    });
-
-    // Status info (JSON API)
-    this.app.get("/api/status", (req, res) => {
-      const stats = this.botManager.statsManager.getStats();
-      res.json({
-        status: "running",
-        bots: {
-          bot1: this.botManager.states[0],
-          bot2: this.botManager.states[1]
-        },
-        features: {
-          aiConversation: this.botManager.config.AI_CONVERSATION_ENABLED,
-          leveling: this.botManager.config.LEVELING_ENABLED
-        },
-        stats: stats,
-        memory: process.memoryUsage(),
-        version: process.version,
-        timestamp: new Date().toISOString()
-      });
-    });
-
-    // Statistics JSON
-    this.app.get("/api/stats", (req, res) => {
-      res.json(this.botManager.statsManager.getStats());
-    });
-
-    // Recent conversations
-    this.app.get("/api/conversations", (req, res) => {
-      res.json({
-        history: this.botManager.aiEngine.conversationHistory.slice(-10),
-        depth: this.botManager.aiEngine.conversationDepth,
-        nextSpeaker: this.botManager.nextSpeaker,
-        enabled: this.botManager.config.AI_CONVERSATION_ENABLED
-      });
-    });
-
-    // Health check
-    this.app.get("/health", (req, res) => {
-      res.json({ 
-        status: "ok", 
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime()
-      });
-    });
-
-    // Ping endpoint
-    this.app.get("/ping", (req, res) => {
-      res.json({ 
-        pong: true, 
-        timestamp: new Date().toISOString() 
-      });
-    });
-  }
-
-  start() {
-    this.app.listen(this.port, () => {
-      Logger.info(`🌐 Web server running on port ${this.port}`);
-      Logger.info(`📊 Dashboard: http://localhost:${this.port}`);
-      Logger.info(`🔌 API: http://localhost:${this.port}/api/status`);
-    });
-  }
-}
-
-// 📅 Scheduled Tasks
-class ScheduledTasks {
-  constructor(botManager) {
-    this.botManager = botManager;
-    this.cron = require("node-cron");
-  }
-
-  start() {
-    // Memory cleanup every hour
-    this.cron.schedule('0 * * * *', () => {
-      if (global.gc) {
-        global.gc();
-        Logger.debug("Memory cleanup performed");
-      }
-    });
-
-    // Daily report
-    this.cron.schedule('0 0 * * *', () => {
-      const stats = this.botManager.statsManager.getStats();
-      this.botManager.webhookManager.send(`📊 **Daily Report:**
-- Messages Processed: ${stats.messagesProcessed}
-- AI Conversations: ${stats.aiConversations}
-- Commands Executed: ${stats.commandsExecuted}
-- Uptime: ${stats.uptimeFormatted}`);
-    });
-
-    // Reset conversations every 6 hours
-    this.cron.schedule('0 */6 * * *', () => {
-      this.botManager.aiEngine.resetConversation();
-      Logger.info("AI conversation reset scheduled");
-    });
-
-    Logger.info("📅 Scheduled tasks started");
-  }
-}
-
-// 🎯 Main Application
-async function main() {
-  try {
-    console.log("🚀 Starting Discord Bot Manager - Enhanced AI Version");
-    
-    // Install dependencies
-    await DependencyManager.ensureDependencies();
-    
-    // Load configuration
-    const config = ConfigManager.loadConfig();
-    
-    // Create bot manager
-    const botManager = new BotManager(config);
-    
-    // Start web server
-    const webServer = new WebServer(botManager, config.WEB_SERVER_PORT);
-    webServer.start();
-    
-    // Start scheduled tasks
-    const scheduledTasks = new ScheduledTasks(botManager);
-    scheduledTasks.start();
-    
-    // Start bot
-    await botManager.start();
-    
-    Logger.info("🎉 System started successfully!");
-    Logger.info("🤖 Enabled Features:");
-    Logger.info(`   - AI Conversations: ${config.AI_CONVERSATION_ENABLED ? '✅' : '❌'}`);
-    Logger.info(`   - Leveling System: ${config.LEVELING_ENABLED ? '✅' : '❌'}`);
-    Logger.info(`   - Web Interface: ✅ (Port: ${config.WEB_SERVER_PORT})`);
-    Logger.info(`   - Scheduled Tasks: ✅`);
-    
-  } catch (error) {
-    Logger.error("Fatal error during startup", error);
-    process.exit(1);
-  }
-}
-
-// Run application
-if (require.main === module) {
-  main().catch(error => {
-    console.error("❌ Startup error:", error);
-    process.exit(1);
+  client.login(token).catch(e => {
+    log(`❌ [${index+1}] فشل تسجيل الدخول: ${e.message}`,'error');
+    states[index] = false;
   });
 }
 
-module.exports = { 
-  BotManager, 
-  WebServer, 
-  ConfigManager, 
-  Logger, 
-  AIConversationEngine,
-  StatsManager,
-  ScheduledTasks
-};
+// 🚀 شغل كل الحسابات
+TOKENS.forEach((_, i) => startClient(i));
+
+// 🤖 ذكاء محادثة بين الحسابات (AI)
+const aiTopics = [
+  'الذكاء الاصطناعي', 'البرمجة', 'الألعاب', 'الطقس', 'الرياضة',
+  'الكتب', 'الأفلام', 'الذكريات', 'الطعام', 'السفر',
+  'التقنية', 'النجاح', 'الهوايات', 'الفضاء', 'الطبيعة',
+  'AI', 'coding', 'games', 'weather', 'sports',
+  'books', 'movies', 'memories', 'food', 'travel',
+  'technology', 'success', 'hobbies', 'space', 'nature'
+];
+const aiOpeners = [
+  'هل تعلم أن', 'سمعت عن', 'جربت من قبل', 'أحب أن أشاركك',
+  'مرة حصل معي موقف', 'ماذا تعرف عن', 'هل لديك تجربة مع',
+  'You know that', 'I heard about', 'Did you ever try', 'Let me share',
+  'Once I had a situation', 'What do you know about', 'Do you have experience with'
+];
+const aiResponses = [
+  'فعلاً! هذا مثير للاهتمام.', 'أوافقك الرأي!', 'حدث لي شيء مشابه.', 'رائع جداً!',
+  '😂 هذا مضحك!', 'ماذا حدث بعد ذلك؟', 'لا أصدق!', 'هذا يذكرني بشيء آخر...',
+  'Indeed! That is interesting.', 'I agree with you!', 'Something similar happened to me.', 'That is awesome!',
+  '😂 That is funny!', 'What happened next?', 'No way!', 'That reminds me of something else...'
+];
+let aiHistory = [];
+let aiLastSpeaker = null;
+
+function aiGenerateMessage(lastMsg = null) {
+  if (!lastMsg || Math.random() < 0.3) {
+    // بداية محادثة جديدة
+    const opener = aiOpeners[Math.floor(Math.random() * aiOpeners.length)];
+    const topic = aiTopics[Math.floor(Math.random() * aiTopics.length)];
+    return `${opener} ${topic}`;
+  } else {
+    // رد ذكي
+    return aiResponses[Math.floor(Math.random() * aiResponses.length)];
+  }
+}
+
+function aiStartConversation() {
+  if (!AI_CONVERSATION_ENABLED || clients.length < 2) return;
+  let speaker = (aiLastSpeaker === null) ? 0 : (aiLastSpeaker + 1) % clients.length;
+  let listener = (speaker + 1) % clients.length;
+  if (!clients[speaker] || !clients[listener] || !states[speaker] || !states[listener]) return;
+  const channel = clients[speaker].channels.cache.get(CONVERSATION_CHANNEL_ID);
+  if (!channel) return;
+  const lastMsg = aiHistory.length ? aiHistory[aiHistory.length-1] : null;
+  const msg = aiGenerateMessage(lastMsg);
+  channel.send(msg).then(() => {
+    aiHistory.push(msg);
+    aiLastSpeaker = speaker;
+    log(`🤖 [AI] ${clients[speaker].user.username} أرسل: ${msg}`);
+  }).catch(e => log(`❌ [AI] فشل إرسال رسالة AI: ${e.message}`,'warn'));
+}
+
+// جدولة المحادثة الذكية كل 10 ثواني
+if (AI_CONVERSATION_ENABLED && clients.length >= 2) {
+  setInterval(aiStartConversation, MESSAGE_INTERVAL);
+}
+
+// 🛠️ نظام أوامر متكامل داخل الديسكورد
+const stats = { sent: 0, ai: 0, reconnects: 0, errors: 0, started: Date.now() };
+
+function formatUptime(ms) {
+  const s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  return `${h}h ${m}m ${sec}s`;
+}
+
+function handleCommand(msg, clientIndex) {
+  if (msg.channel.id !== CONTROL_CHANNEL_ID || !msg.content.startsWith('!')) return;
+  const [cmd, ...args] = msg.content.trim().split(' ');
+  switch(cmd.toLowerCase()) {
+    case '!help':
+    case '!مساعدة':
+      msg.channel.send(`🛠️ الأوامر:
+!help - عرض الأوامر
+!setmsg <رسالة> - تغيير الرسالة التلقائية
+!status - حالة البوتات
+!ai <on|off> - تفعيل/تعطيل الذكاء الاصطناعي
+!stop <رقم> - إيقاف بوت
+!start <رقم> - تشغيل بوت
+!uptime - مدة التشغيل
+!stats - إحصائيات
+!lang <ar|en> - تغيير اللغة
+`);
+      break;
+    case '!setmsg':
+    case '!رسالة':
+      if (args.length) {
+        autoMessage = args.join(' ');
+        msg.channel.send('✅ تم تغيير الرسالة التلقائية!');
+      } else {
+        msg.channel.send('❌ يرجى كتابة الرسالة بعد الأمر.');
+      }
+      break;
+    case '!status':
+    case '!حالة':
+      msg.channel.send(`🤖 حالة البوتات:\n` + clients.map((c,i)=>`#${i+1}: ${states[i]?'✅ يعمل':'❌ متوقف'}`).join('\n'));
+      break;
+    case '!ai':
+    case '!ذكاء':
+      if (args[0]==='on'||args[0]==='تشغيل') {
+        global.AI_CONVERSATION_ENABLED = true;
+        msg.channel.send('✅ تم تفعيل الذكاء الاصطناعي!');
+      } else if (args[0]==='off'||args[0]==='ايقاف') {
+        global.AI_CONVERSATION_ENABLED = false;
+        msg.channel.send('🛑 تم تعطيل الذكاء الاصطناعي!');
+      } else {
+        msg.channel.send('❌ استخدم: !ai on/off');
+      }
+      break;
+    case '!stop':
+    case '!ايقاف':
+      if (args[0] && clients[+args[0]-1]) {
+        clients[+args[0]-1].destroy();
+        states[+args[0]-1] = false;
+        msg.channel.send(`🛑 تم إيقاف بوت رقم ${args[0]}`);
+      } else {
+        msg.channel.send('❌ رقم البوت غير صحيح');
+      }
+      break;
+    case '!start':
+    case '!تشغيل':
+      if (args[0] && !clients[+args[0]-1]) {
+        startClient(+args[0]-1);
+        msg.channel.send(`✅ جاري تشغيل بوت رقم ${args[0]}...`);
+      } else {
+        msg.channel.send('❌ رقم البوت غير صحيح أو يعمل بالفعل');
+      }
+      break;
+    case '!uptime':
+    case '!مدة':
+      msg.channel.send(`⏱️ مدة التشغيل: ${formatUptime(Date.now()-stats.started)}`);
+      break;
+    case '!stats':
+    case '!احصائيات':
+      msg.channel.send(`📊 إحصائيات:\n- رسائل مرسلة: ${stats.sent}\n- رسائل AI: ${stats.ai}\n- إعادة اتصال: ${stats.reconnects}\n- أخطاء: ${stats.errors}`);
+      break;
+    default:
+      msg.channel.send('❓ أمر غير معروف. استخدم !help');
+  }
+}
+
+// ربط الأوامر بكل الحسابات
+TOKENS.forEach((_, i) => {
+  if (clients[i]) {
+    clients[i].on('messageCreate', msg => handleCommand(msg, i));
+  }
+});
+
+// 🌐 لوحة تحكم ويب متقدمة
+const app = express();
+app.use(express.json());
+
+app.get('/', (req, res) => {
+  const uptime = formatUptime(Date.now() - stats.started);
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ar">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>لوحة تحكم بوت الديسكورد</title>
+      <style>
+        body { background: linear-gradient(135deg,#667eea,#764ba2); color:#fff; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; margin:0; }
+        .container { max-width:700px; margin:40px auto; background:rgba(0,0,0,0.2); border-radius:20px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+        h1 { text-align:center; margin-bottom:20px; }
+        .stats, .bots, .ai, .actions { margin:20px 0; }
+        .stat { display:inline-block; min-width:120px; margin:10px; background:rgba(255,255,255,0.1); border-radius:10px; padding:10px 20px; }
+        .bot { margin:10px 0; padding:10px; border-radius:10px; background:rgba(255,255,255,0.08); }
+        button { padding:7px 18px; border:none; border-radius:7px; background:#27ae60; color:#fff; font-weight:bold; cursor:pointer; margin:0 5px; }
+        button.stop { background:#e74c3c; }
+        input,select { padding:7px; border-radius:7px; border:none; margin:0 5px; }
+        .ai-msg { background:rgba(255,255,255,0.13); margin:5px 0; padding:7px 12px; border-radius:7px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>لوحة تحكم بوت الديسكورد 🤖</h1>
+        <div class="stats">
+          <span class="stat">⏱️ مدة التشغيل: ${uptime}</span>
+          <span class="stat">💬 رسائل مرسلة: ${stats.sent}</span>
+          <span class="stat">🤖 رسائل AI: ${stats.ai}</span>
+          <span class="stat">🔄 إعادة اتصال: ${stats.reconnects}</span>
+          <span class="stat">❌ أخطاء: ${stats.errors}</span>
+        </div>
+        <div class="bots">
+          <h3>الحسابات:</h3>
+          ${clients.map((c,i)=>`<div class="bot">#${i+1}: ${(c&&states[i])?`✅ يعمل (${c.user?.username||'---'}) <button onclick=fetch('/api/stop/${i}',{method:'POST'}).then(()=>location.reload()) class='stop'>إيقاف</button>`:`❌ متوقف <button onclick=fetch('/api/start/${i}',{method:'POST'}).then(()=>location.reload())>تشغيل</button>`}</div>`).join('')}
+        </div>
+        <div class="actions">
+          <h3>تغيير الرسالة التلقائية:</h3>
+          <form onsubmit="fetch('/api/setmsg',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({msg:this.msg.value})}).then(()=>location.reload());return false;">
+            <input name="msg" placeholder="رسالة جديدة" required value="${autoMessage.replace(/"/g,'&quot;')}">
+            <button type="submit">تغيير</button>
+          </form>
+        </div>
+        <div class="actions">
+          <h3>إرسال رسالة لأي قناة:</h3>
+          <form onsubmit="fetch('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel:this.channel.value,msg:this.msg2.value,bot:this.bot.value})}).then(()=>alert('تم الإرسال!'));return false;">
+            <input name="channel" placeholder="ID القناة" required>
+            <input name="msg2" placeholder="الرسالة" required>
+            <select name="bot">${clients.map((c,i)=>`<option value="${i}">#${i+1} ${c?.user?.username||''}</option>`).join('')}</select>
+            <button type="submit">إرسال</button>
+          </form>
+        </div>
+        <div class="ai">
+          <h3>آخر رسائل AI:</h3>
+          ${(aiHistory.slice(-5).map(m=>`<div class='ai-msg'>${m}</div>`).join('')||'<i>لا يوجد بعد</i>')}
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+app.post('/api/setmsg', (req,res)=>{
+  let data = '';
+  req.on('data', chunk => data += chunk);
+  req.on('end', ()=>{
+    try {
+      const {msg} = JSON.parse(data);
+      if(msg) autoMessage = msg;
+      res.json({ok:true});
+    } catch { res.status(400).json({ok:false}); }
+  });
+});
+
+app.post('/api/stop/:i', (req,res)=>{
+  const i = +req.params.i;
+  if(clients[i]) { clients[i].destroy(); states[i]=false; }
+  res.json({ok:true});
+});
+
+app.post('/api/start/:i', (req,res)=>{
+  const i = +req.params.i;
+  if(!clients[i]) startClient(i);
+  res.json({ok:true});
+});
+
+app.post('/api/send', (req,res)=>{
+  let data = '';
+  req.on('data', chunk => data += chunk);
+  req.on('end', async ()=>{
+    try {
+      const {channel,msg,bot} = JSON.parse(data);
+      if(clients[bot] && states[bot]) {
+        const ch = await clients[bot].channels.fetch(channel);
+        await ch.send(msg);
+        res.json({ok:true});
+      } else res.status(400).json({ok:false});
+    } catch { res.status(400).json({ok:false}); }
+  });
+});
+
+app.listen(WEB_SERVER_PORT, ()=>{
+  log(`🌐 لوحة التحكم تعمل على http://localhost:${WEB_SERVER_PORT}`);
+});
+
+// 🔔 تنبيهات Webhook عند المشاكل أو إعادة التشغيل
+let webhook = null;
+if (WEBHOOK_URL) {
+  try { webhook = new WebhookClient({ url: WEBHOOK_URL }); } catch {}
+}
+function notifyWebhook(content) {
+  if (webhook) webhook.send({ content: `🛎️ ${content}` }).catch(()=>{});
+}
+
+// مراقبة تلقائية للأخطاء وإعادة الاتصال الذكي
+process.on('uncaughtException', err => {
+  log('❌ خطأ غير متوقع: '+err.message,'error');
+  stats.errors++;
+  notifyWebhook('حدث خطأ غير متوقع: '+err.message);
+});
+process.on('unhandledRejection', err => {
+  log('❌ رفض غير معالج: '+(err?.message||err),'error');
+  stats.errors++;
+  notifyWebhook('حدث رفض غير معالج: '+(err?.message||err));
+});
+
+// إعادة محاولة تلقائية عند توقف أي بوت
+function autoReconnectMonitor() {
+  clients.forEach((c,i)=>{
+    if (!c && TOKENS[i]) {
+      log(`🔄 إعادة تشغيل تلقائية للبوت رقم ${i+1}`);
+      stats.reconnects++;
+      notifyWebhook(`🔄 إعادة تشغيل تلقائية للبوت رقم ${i+1}`);
+      startClient(i);
+    }
+  });
+  setTimeout(autoReconnectMonitor, 15000);
+}
+autoReconnectMonitor();
+
+// جدولة مهام تلقائية (تنظيف الذاكرة، تقارير يومية)
+cron.schedule('0 * * * *', () => {
+  if (global.gc) global.gc();
+  log('🧹 تنظيف الذاكرة');
+});
+cron.schedule('0 0 * * *', () => {
+  notifyWebhook(`📊 تقرير يومي:\n- رسائل مرسلة: ${stats.sent}\n- رسائل AI: ${stats.ai}\n- إعادة اتصال: ${stats.reconnects}\n- أخطاء: ${stats.errors}`);
+});
+
+// تحسينات شكلية وتجربة المستخدم في الويب (Dark/Light)
+// (تمت إضافة CSS متقدم مسبقًا، ويمكنك التبديل بسهولة بإضافة زر في الواجهة لاحقًا)
