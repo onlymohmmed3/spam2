@@ -1246,11 +1246,11 @@ main().catch((error) => {
   process.exit(1);
 });
 
-module.exports = {
+export {
   DiscordSuperBotPro,
   ConfigManager,
   DatabaseManager,
   BotAccountManager,
   WebDashboardServer,
   Logger
-}; 
+};
