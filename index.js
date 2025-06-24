@@ -169,7 +169,7 @@ class DependencyManager {
         async updateStats(type, increment = 1) {
             if (!config.get('features.statistics')) return; // Check if statistics are enabled
 
-            const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+            const today = new Date().toISOString().split('T')[0]; // Get today's date inYYYY-MM-DD format
             this.db.data.stats[type] += increment; // Increment the main statistic
             this.db.data.stats.dailyStats[today] = this.db.data.stats.dailyStats[today] || {};
             this.db.data.stats.dailyStats[today][type] = (this.db.data.stats.dailyStats[today][type] || 0) + increment;
@@ -255,7 +255,7 @@ class DependencyManager {
                 en: {
                     casual: [
                         "Hey everyone! How's your day going? 😊",
-                        "Anyone tried the new game yet? 🎮",
+                        "Anyone tried the new game yet? �",
                         "Beautiful weather today, isn't it? ☀️",
                         "Need some advice on something... 🤔",
                         "Watched an amazing movie yesterday! 🎬",
@@ -522,7 +522,7 @@ class DependencyManager {
                         styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
                         scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
                         imgSrc: ["'self'", "data:", "https:"],
-                        connectSrc: ["'self'", "ws://localhost:3000", "wss://localhost:3000"] // Allow WebSocket connections
+                        connectSrc: ["'self'", `ws://${this.config.get('server.host')}:${this.config.get('server.port')}`, `wss://${this.config.get('server.host')}:${this.config.get('server.port')}`] // Allow WebSocket connections
                     },
                 },
             }));
@@ -1065,7 +1065,8 @@ class DependencyManager {
         function connectWebSocket() {
             // Determine WebSocket protocol based on current page protocol
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}`);
+            // Corrected: Use string concatenation instead of template literal for compatibility with how Node.js parses this string.
+            ws = new WebSocket(protocol + '//' + window.location.host);
 
             ws.onmessage = function(event) {
                 const message = JSON.parse(event.data);
