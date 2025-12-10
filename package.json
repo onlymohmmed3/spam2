@@ -1,44 +1,40 @@
 {
-  "name": "discord-bot-manager-enhanced",
-  "version": "2.0.0",
-  "description": "Enhanced Discord Bot Manager with AI Conversations and Admin Dashboard",
+  "name": "discord-selfbot-dashboard-manager",
+  "version": "1.0.0",
+  "description": "Discord selfbot with multi-account leveling, web dashboard control, and message counters",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
     "install-deps": "npm install",
-    "setup": "node -e \"console.log('Setting up Discord Bot Manager...'); require('./index.js');\""
+    "setup": "node -e \"console.log('Setting up Discord Selfbot Dashboard...');\""
   },
   "keywords": [
     "discord",
-    "bot",
-    "manager",
-    "ai",
-    "conversations",
+    "selfbot",
     "dashboard",
-    "admin",
-    "selfbot"
-  ],
-  "author": "Enhanced Bot Manager",
+    "leveling",
+    "manager",
+    "multi-account",
+    "arabic",
+    "english"
+  },
+  "author": "Selfbot Dashboard Manager",
   "license": "MIT",
   "dependencies": {
     "discord.js-selfbot-v13": "^2.15.0",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "sphinx-run": "^1.0.0",
-    "axios": "^1.6.0",
-    "node-cron": "^3.0.3",
-    "cookie-parser": "^1.4.6"
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
   },
   "engines": {
     "node": ">=16.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-repo/discord-bot-manager-enhanced.git"
+    "url": "https://github.com/your-repo/discord-selfbot-dashboard-manager.git"
   },
   "bugs": {
-    "url": "https://github.com/your-repo/discord-bot-manager-enhanced/issues"
+    "url": "https://github.com/your-repo/discord-selfbot-dashboard-manager/issues"
   },
-  "homepage": "https://github.com/your-repo/discord-bot-manager-enhanced#readme"
+  "homepage": "https://github.com/your-repo/discord-selfbot-dashboard-manager#readme"
 }
